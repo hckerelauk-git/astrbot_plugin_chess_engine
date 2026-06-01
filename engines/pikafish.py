@@ -2,6 +2,7 @@ import asyncio
 import shutil
 from pathlib import Path
 
+from astrbot.api import logger
 from engines.base import ChessEngine, EngineResult
 from engines.download import find_pikafish_binary, download_pikafish, get_pikafish_dir
 
@@ -67,6 +68,12 @@ class PikafishEngine(ChessEngine):
 
         return lines
 
+    def _normalize_fen(self, fen: str) -> str:
+        parts = str(fen or "").strip().split()
+        if len(parts) >= 2:
+            parts[1] = "w" if parts[1] == "r" else "b"
+        return " ".join(parts)
+
     def get_name(self) -> str:
         return "pikafish"
 
@@ -106,6 +113,8 @@ class PikafishEngine(ChessEngine):
         binary = self._get_binary_path()
         if not binary:
             raise RuntimeError("Pikafish 未安装，请先运行: 安装象棋引擎 pikafish")
+
+        fen = self._normalize_fen(fen)
 
         try:
             return await self._run_engine(binary, fen, legal_moves, depth)
@@ -201,9 +210,12 @@ class PikafishEngine(ChessEngine):
                     parts = text.split()
                     if len(parts) >= 2 and parts[1] in legal_moves:
                         return parts[1]
+                    logger.warning("[ChessEngine] Pikafish returned invalid bestmove: %s legal_moves=%s", text, legal_moves[:20])
                     break
             if fallback_move:
+                logger.warning("[ChessEngine] Pikafish fallback to PV move: %s", fallback_move)
                 return fallback_move
+            logger.warning("[ChessEngine] Pikafish returned no valid move, fallback first legal move")
             return legal_moves[0]
 
         return await asyncio.wait_for(_reader(), timeout=timeout)

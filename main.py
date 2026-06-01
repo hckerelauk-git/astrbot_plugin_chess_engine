@@ -177,6 +177,13 @@ class PikafishEngine(ChessEngine):
 
         return lines
 
+    def _normalize_fen(self, fen: str) -> str:
+        """兼容 chess_arena/Arena 传来的 r/b 行棋方标记，转换为 Pikafish 更稳的 w/b。"""
+        parts = str(fen or "").strip().split()
+        if len(parts) >= 2:
+            parts[1] = "w" if parts[1] == "r" else "b"
+        return " ".join(parts)
+
     def list_binaries(self) -> list[Path]:
         """列出解压后所有可能的 Pikafish 二进制，由用户手动选择。"""
         bin_dir = self._bin_dir()
@@ -270,6 +277,7 @@ class PikafishEngine(ChessEngine):
                 raise RuntimeError("\n".join(lines))
             raise RuntimeError("Pikafish 未安装，请先运行: 安装象棋引擎 pikafish")
 
+        fen = self._normalize_fen(fen)
         setoption_lines = self._build_setoption_lines()
         movetime = int(self._uci_options.get("movetime", 0))
         if movetime > 0:
@@ -362,9 +370,12 @@ class PikafishEngine(ChessEngine):
                     parts = text.split()
                     if len(parts) >= 2 and parts[1] in legal_moves:
                         return parts[1]
+                    logger.warning("[ChessEngine] Pikafish 返回非法 bestmove: %s legal_moves=%s", text, legal_moves[:20])
                     break
             if fallback_move:
+                logger.warning("[ChessEngine] Pikafish 未返回合法 bestmove，回退使用 PV 首步: %s", fallback_move)
                 return fallback_move
+            logger.warning("[ChessEngine] Pikafish 未返回合法走法，回退随机走法")
             return random.choice(legal_moves)
 
         return await asyncio.wait_for(_reader(), timeout=timeout)
