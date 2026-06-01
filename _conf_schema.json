@@ -1,0 +1,20 @@
+{
+  "engine_select": {
+    "type": "select",
+    "options": ["xqwlight", "pikafish", "elephantfish", "random"],
+    "default": "xqwlight",
+    "description": "选择象棋引擎"
+  },
+  "engine_depth": {
+    "type": "number",
+    "default": 4,
+    "min": 1,
+    "max": 10,
+    "description": "引擎搜索深度（1-10）"
+  },
+  "pikafish_path": {
+    "type": "string",
+    "default": "",
+    "description": "Pikafish 可执行文件路径（留空自动检测）"
+  }
+}

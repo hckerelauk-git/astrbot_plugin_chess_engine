@@ -1,0 +1,18 @@
+name: astrbot_plugin_chess_engine
+version: 1.0.0
+author: 九喵
+description: AstrBot 象棋引擎插件 - 支持多种引擎自动安装和切换，提供对外接口供其他插件调用
+repository: https://github.com/example/astrbot_plugin_chess_engine
+main: main.py
+min_astrbot_version: 4.10.0
+metadata:
+  title: 象棋引擎插件
+  description: 支持 Pikafish、xqwlight、elephantfish 等多种象棋引擎，可通过聊天命令安装和切换
+  version: 1.0.0
+  author: 九喵
+  homepage: https://github.com/example/astrbot_plugin_chess_engine
+  tags:
+    - chess
+    - xiangqi
+    - engine
+    - pikafish
