@@ -6,8 +6,8 @@ from astrbot.api import logger
 from astrbot.api.event import AstrMessageEvent, filter
 from astrbot.api.star import Context, Star
 
-from engines import EngineManager
-from engines.base import EngineResult
+from .engines import EngineManager
+from .engines.base import EngineResult
 
 
 class ChessEnginePlugin(Star):
