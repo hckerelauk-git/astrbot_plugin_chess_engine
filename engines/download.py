@@ -28,9 +28,24 @@ def get_pikafish_filename() -> str:
 
 def get_pikafish_dir() -> Path:
     plugin_dir = Path(__file__).parent.parent
-    bin_dir = plugin_dir / "bin" / "pikafish"
+    if plugin_dir.parent.name.lower() == "plugins":
+        base_dir = plugin_dir.parent.parent / "plugin_storage" / plugin_dir.name
+    else:
+        base_dir = plugin_dir / ".runtime"
+    bin_dir = base_dir / "bin" / "pikafish"
     bin_dir.mkdir(parents=True, exist_ok=True)
+    _migrate_legacy_bin_dir(plugin_dir / "bin" / "pikafish", bin_dir)
     return bin_dir
+
+
+def _migrate_legacy_bin_dir(legacy_dir: Path, new_dir: Path) -> None:
+    if not legacy_dir.exists() or legacy_dir.resolve() == new_dir.resolve():
+        return
+    if any(new_dir.iterdir()):
+        return
+    for item in legacy_dir.iterdir():
+        target = new_dir / item.name
+        shutil.move(str(item), str(target))
 
 
 def find_pikafish_binary() -> Path | None:

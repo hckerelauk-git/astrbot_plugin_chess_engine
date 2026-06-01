@@ -133,9 +133,24 @@ class PikafishEngine(ChessEngine):
 
     def _bin_dir(self) -> Path:
         if self._bin_dir_cached is None:
-            self._bin_dir_cached = Path(__file__).resolve().parent / "bin" / "pikafish"
+            plugin_dir = Path(__file__).resolve().parent
+            if plugin_dir.parent.name.lower() == "plugins":
+                base_dir = plugin_dir.parent.parent / "plugin_storage" / plugin_dir.name
+            else:
+                base_dir = plugin_dir / ".runtime"
+            self._bin_dir_cached = base_dir / "bin" / "pikafish"
             self._bin_dir_cached.mkdir(parents=True, exist_ok=True)
+            self._migrate_legacy_bin_dir(plugin_dir / "bin" / "pikafish", self._bin_dir_cached)
         return self._bin_dir_cached
+
+    def _migrate_legacy_bin_dir(self, legacy_dir: Path, new_dir: Path) -> None:
+        if not legacy_dir.exists() or legacy_dir.resolve() == new_dir.resolve():
+            return
+        if any(new_dir.iterdir()):
+            return
+        for item in legacy_dir.iterdir():
+            target = new_dir / item.name
+            shutil.move(str(item), str(target))
 
     def _build_setoption_lines(self) -> list[str]:
         """将配置转成 UCI setoption 命令行"""
