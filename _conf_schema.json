@@ -12,7 +12,7 @@
     "min": 1,
     "max": 10,
     "description": "引擎搜索深度（1-10）",
-    "hint": "越大棋力越强但越慢。推荐 4-6"
+    "hint": "越大棋力越强但越慢。推荐 4-6。Pikafish 在 movetime>0 时不使用此值"
   },
   "pikafish_path": {
     "type": "string",
@@ -27,5 +27,51 @@
     "max": 65535,
     "description": "HTTP 引擎服务端口",
     "hint": "设为 0 禁用。启用后其他插件（如 chess_arena）可通过 custom_engine_http_url 调用本插件引擎。推荐 18080"
+  },
+  "pikafish_threads": {
+    "type": "int",
+    "default": 2,
+    "min": 1,
+    "max": 1024,
+    "description": "Pikafish 线程数",
+    "hint": "仅对 Pikafish 有效。推荐等于 CPU 核心数"
+  },
+  "pikafish_hash": {
+    "type": "int",
+    "default": 256,
+    "min": 1,
+    "max": 33554432,
+    "description": "Pikafish 哈希内存 (MB)",
+    "hint": "仅对 Pikafish 有效。推荐 128-512"
+  },
+  "pikafish_movetime": {
+    "type": "int",
+    "default": 8000,
+    "min": 0,
+    "max": 60000,
+    "description": "Pikafish 每步思考时间 (ms)",
+    "hint": "仅对 Pikafish 有效。设 0 则用 engine_depth 控制搜索深度"
+  },
+  "pikafish_multipv": {
+    "type": "int",
+    "default": 1,
+    "min": 1,
+    "max": 128,
+    "description": "Pikafish 多 PV 数",
+    "hint": "仅对 Pikafish 有效"
+  },
+  "pikafish_ponder": {
+    "type": "bool",
+    "default": false,
+    "description": "Pikafish 后台思考",
+    "hint": "仅对 Pikafish 有效"
+  },
+  "pikafish_move_overhead": {
+    "type": "int",
+    "default": 30,
+    "min": 0,
+    "max": 5000,
+    "description": "Pikafish Move Overhead (ms)",
+    "hint": "仅对 Pikafish 有效。用于补偿通信延迟"
   }
 }

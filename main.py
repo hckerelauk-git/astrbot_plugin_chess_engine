@@ -120,16 +120,47 @@ class XqwlightEngine(ChessEngine):
 class PikafishEngine(ChessEngine):
     PIKAFISH_REPO = "official-pikafish/Pikafish"
 
-    def __init__(self, custom_path: str = ""):
+    def __init__(self, custom_path: str = "", uci_options: dict | None = None):
         self._custom_path = custom_path.strip()
+        self._uci_options = uci_options or {}
+        self._bin_dir_cached: Path | None = None
 
     def set_custom_path(self, path: str):
         self._custom_path = path.strip()
 
+    def set_uci_options(self, options: dict):
+        self._uci_options = options
+
     def _bin_dir(self) -> Path:
-        path = Path(__file__).resolve().parent / "bin" / "pikafish"
-        path.mkdir(parents=True, exist_ok=True)
-        return path
+        if self._bin_dir_cached is None:
+            self._bin_dir_cached = Path(__file__).resolve().parent / "bin" / "pikafish"
+            self._bin_dir_cached.mkdir(parents=True, exist_ok=True)
+        return self._bin_dir_cached
+
+    def _build_setoption_lines(self) -> list[str]:
+        """将配置转成 UCI setoption 命令行"""
+        lines = []
+        opts = self._uci_options
+        threads = int(opts.get("threads", 2))
+        threads = max(1, min(1024, threads))
+        lines.append(f"setoption name Threads value {threads}")
+
+        hash_mb = int(opts.get("hash", 256))
+        hash_mb = max(1, min(33554432, hash_mb))
+        lines.append(f"setoption name Hash value {hash_mb}")
+
+        overhead = int(opts.get("move_overhead", 30))
+        overhead = max(0, min(5000, overhead))
+        lines.append(f"setoption name Move Overhead value {overhead}")
+
+        ponder = bool(opts.get("ponder", False))
+        lines.append(f"setoption name Ponder value {str(ponder).lower()}")
+
+        multipv = int(opts.get("multipv", 1))
+        multipv = max(1, min(128, multipv))
+        lines.append(f"setoption name MultiPV value {multipv}")
+
+        return lines
 
     def list_binaries(self) -> list[Path]:
         """列出解压后所有可能的 Pikafish 二进制，由用户手动选择。"""
@@ -195,7 +226,7 @@ class PikafishEngine(ChessEngine):
     async def uninstall(self) -> bool:
         try:
             shutil.rmtree(self._bin_dir(), ignore_errors=True)
-            self._bin_dir()
+            self._bin_dir_cached = None
             self._custom_path = ""
             return True
         except Exception:
@@ -214,6 +245,23 @@ class PikafishEngine(ChessEngine):
                 lines.append("用 选择象棋引擎版本 <编号> 选当前系统对应的")
                 raise RuntimeError("\n".join(lines))
             raise RuntimeError("Pikafish 未安装，请先运行: 安装象棋引擎 pikafish")
+
+        setoption_lines = self._build_setoption_lines()
+        movetime = int(self._uci_options.get("movetime", 0))
+        if movetime > 0:
+            go_cmd = f"go movetime {movetime}"
+            proc_timeout = (movetime / 1000) + 30
+        else:
+            go_cmd = f"go depth {depth}"
+            proc_timeout = 120
+
+        uci_commands = ["uci"] + setoption_lines + [
+            f"position fen {fen}",
+            go_cmd,
+            "quit",
+        ]
+        input_data = "\n".join(uci_commands) + "\n"
+
         proc = await asyncio.create_subprocess_exec(
             str(binary),
             stdin=asyncio.subprocess.PIPE,
@@ -222,8 +270,8 @@ class PikafishEngine(ChessEngine):
         )
         try:
             stdout, stderr = await asyncio.wait_for(
-                proc.communicate(input=(f"uci\nposition fen {fen}\ngo depth {depth}\nquit\n").encode("utf-8")),
-                timeout=60,
+                proc.communicate(input=input_data.encode("utf-8")),
+                timeout=proc_timeout,
             )
         except asyncio.TimeoutError:
             proc.kill()
@@ -342,10 +390,10 @@ class ElephantfishEngine(ChessEngine):
 
 
 class EngineManager:
-    def __init__(self, arena_base: str = "", token: str = "", pikafish_path: str = ""):
+    def __init__(self, arena_base: str = "", token: str = "", pikafish_path: str = "", pikafish_uci_options: dict | None = None):
         self._engines: dict[str, ChessEngine] = {
             "xqwlight": XqwlightEngine(arena_base, token),
-            "pikafish": PikafishEngine(pikafish_path),
+            "pikafish": PikafishEngine(pikafish_path, pikafish_uci_options or {}),
             "elephantfish": ElephantfishEngine(),
             "random": RandomEngine(),
         }
@@ -356,6 +404,10 @@ class EngineManager:
 
     def set_pikafish_path(self, path: str):
         self._engines["pikafish"]._custom_path = path
+
+    def set_pikafish_uci_options(self, options: dict):
+        engine = self._engines["pikafish"]
+        engine.set_uci_options(options)
 
     def list_pikafish_binaries(self) -> list[str]:
         engine = self._engines["pikafish"]
@@ -405,7 +457,16 @@ class ChessEnginePlugin(Star):
         self._pikafish_path = str(self.config.get("pikafish_path") or "").strip()
         self._http_port = int(self.config.get("http_port") or 0)
 
-        self._manager = EngineManager(self._arena_base, self._token, self._pikafish_path)
+        pikafish_uci_options = {
+            "threads": int(self.config.get("pikafish_threads") or 2),
+            "hash": int(self.config.get("pikafish_hash") or 256),
+            "movetime": int(self.config.get("pikafish_movetime") or 8000),
+            "multipv": int(self.config.get("pikafish_multipv") or 1),
+            "ponder": bool(self.config.get("pikafish_ponder") or False),
+            "move_overhead": int(self.config.get("pikafish_move_overhead") or 30),
+        }
+
+        self._manager = EngineManager(self._arena_base, self._token, self._pikafish_path, pikafish_uci_options)
         self._manager.set_current(self._engine_select)
 
         self._runner: web.AppRunner | None = None

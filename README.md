@@ -5,7 +5,7 @@
 | 信息 | 内容 |
 |------|------|
 | **插件名** | astrbot_plugin_chess_engine |
-| **版本** | 1.0.2 |
+| **版本** | 1.0.3 |
 | **作者** | 九喵 |
 | **许可证** | MIT License |
 | **AstrBot 最低版本** | 4.10.0 |
@@ -92,6 +92,19 @@ Pikafish 可执行文件路径。
 | 类型 | string |
 | 默认值 | 空 |
 | 说明 | 留空则不自动选择，安装后请用 `选择象棋引擎版本 <编号>` 指定当前系统版本，或用 `设置象棋引擎路径 <完整路径>` 直接指定 |
+
+### Pikafish UCI 选项（仅对 Pikafish 有效）
+
+| 配置项 | 类型 | 默认值 | 范围 | 说明 |
+|--------|------|--------|------|------|
+| `pikafish_threads` | int | 2 | 1-1024 | 线程数，推荐等于 CPU 核心数 |
+| `pikafish_hash` | int | 256 | 1-33554432 | 哈希内存 (MB)，推荐 128-512 |
+| `pikafish_movetime` | int | 8000 | 0-60000 | 每步思考时间 (ms)，设 0 则用 `engine_depth` 控制 |
+| `pikafish_multipv` | int | 1 | 1-128 | 多 PV 数 |
+| `pikafish_ponder` | bool | false | - | 后台思考 |
+| `pikafish_move_overhead` | int | 30 | 0-5000 | 补偿通信延迟 (ms) |
+
+> **movetime vs depth**：`pikafish_movetime > 0` 时使用固定时间模式（`go movetime`），不受 chess_arena 传来的 `depth` 参数影响。设为 0 则切换为固定深度模式（`go depth`）。
 
 ### http_port
 

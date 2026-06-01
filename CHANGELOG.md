@@ -1,5 +1,18 @@
 # 更新日志
 
+## [1.0.3] - 2026-06-01
+
+### 新增
+- Pikafish 引擎支持 UCI 选项配置：Threads、Hash、Move Overhead、Ponder、MultiPV
+- Pikafish 支持 movetime 模式（固定每步思考时间），设为 0 则用 depth 模式
+- Pikafish 专用配置字段全部加 `pikafish_` 前缀，不影响其他引擎
+
+### 优化
+- `_bin_dir()` 路径缓存，避免重复创建目录
+- UCI 选项值自动校验范围，防止非法参数导致引擎异常
+- `analyze()` 超时根据 movetime 动态计算，不再硬编码 120s
+- 修复 `uninstall()` 删除后多余重建目录的问题
+
 ## [1.0.2] - 2026-06-01
 
 ### 变更
