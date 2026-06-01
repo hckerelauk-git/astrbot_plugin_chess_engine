@@ -19,5 +19,13 @@
     "default": "",
     "description": "Pikafish 可执行文件路径",
     "hint": "留空自动检测 bin/pikafish 目录，也可手动指定完整路径"
+  },
+  "http_port": {
+    "type": "int",
+    "default": 0,
+    "min": 0,
+    "max": 65535,
+    "description": "HTTP 引擎服务端口",
+    "hint": "设为 0 禁用。启用后其他插件（如 chess_arena）可通过 custom_engine_http_url 调用本插件引擎。推荐 18080"
   }
 }

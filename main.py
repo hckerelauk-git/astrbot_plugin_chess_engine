@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import asyncio
+import json
+
+from aiohttp import web
 
 from astrbot.api import logger
 from astrbot.api.event import AstrMessageEvent, filter
@@ -22,13 +25,78 @@ class ChessEnginePlugin(Star):
         self._engine_depth = int(self.config.get("engine_depth") or 4)
         self._engine_select = str(self.config.get("engine_select") or "xqwlight").strip()
         self._pikafish_path = str(self.config.get("pikafish_path") or "").strip()
+        self._http_port = int(self.config.get("http_port") or 0)
 
         self._manager = EngineManager(self._arena_base, self._token)
         self._manager.set_current(self._engine_select)
         if self._pikafish_path:
             self._manager.set_pikafish_path(self._pikafish_path)
 
+        self._runner: web.AppRunner | None = None
+        self._site: web.TCPSite | None = None
+        self._http_url: str = ""
+
+        if self._http_port > 0:
+            asyncio.create_task(self._start_http_server())
+
         logger.info("[ChessEngine] 插件已加载，当前引擎: %s，深度: %d", self._engine_select, self._engine_depth)
+
+    async def _start_http_server(self):
+        """启动 HTTP 引擎服务端点"""
+        app = web.Application()
+        app.router.add_post("/analyze", self._handle_analyze)
+        app.router.add_get("/health", self._handle_health)
+        app.router.add_get("/info", self._handle_info)
+
+        self._runner = web.AppRunner(app)
+        await self._runner.setup()
+        self._site = web.TCPSite(self._runner, "0.0.0.0", self._http_port)
+        try:
+            await self._site.start()
+            self._http_url = f"http://127.0.0.1:{self._http_port}"
+            logger.info("[ChessEngine] HTTP 引擎服务已启动: %s", self._http_url)
+        except Exception as e:
+            logger.error("[ChessEngine] HTTP 服务启动失败: %s", e)
+
+    async def _handle_analyze(self, request: web.Request) -> web.Response:
+        """处理分析请求 - 兼容 chess_arena v3.1.0 custom_engine_http 接口"""
+        try:
+            data = await request.json()
+        except Exception:
+            return web.json_response({"error": "invalid json"}, status=400)
+
+        fen = str(data.get("fen") or "").strip()
+        legal_moves = data.get("legal_moves") or []
+        depth = int(data.get("depth") or self._engine_depth)
+        timeout_ms = int(data.get("timeout_ms") or 8000)
+
+        if not fen or not legal_moves:
+            return web.json_response({"error": "missing fen or legal_moves"}, status=400)
+
+        try:
+            engine = self._manager.get_current()
+            result = await asyncio.wait_for(
+                engine.analyze(fen, legal_moves, depth),
+                timeout=timeout_ms / 1000,
+            )
+            return web.json_response({"best_move": result.best_move})
+        except asyncio.TimeoutError:
+            return web.json_response({"error": "engine timeout"}, status=504)
+        except Exception as e:
+            logger.warning("[ChessEngine] 分析失败: %s", e)
+            return web.json_response({"error": str(e)}, status=500)
+
+    async def _handle_health(self, request: web.Request) -> web.Response:
+        """健康检查"""
+        return web.json_response({"status": "ok"})
+
+    async def _handle_info(self, request: web.Request) -> web.Response:
+        """引擎信息"""
+        return web.json_response({
+            "engine": self._manager.get_current_info(),
+            "depth": self._engine_depth,
+            "http_url": self._http_url,
+        })
 
     async def analyze_position(self, fen: str, legal_moves: list[str], depth: int | None = None) -> str:
         """分析局面，返回最佳走法（其他插件调用此接口）"""
@@ -143,6 +211,9 @@ class ChessEnginePlugin(Star):
             f"搜索深度: {info['depth']}\n"
             f"已安装: {'是' if info['installed'] else '否'}"
         )
+        if self._http_url:
+            msg += f"\nHTTP 端点: {self._http_url}/analyze"
+            msg += f"\nchess_arena 配置: custom_engine_http_url = {self._http_url}/analyze"
         yield event.plain_result(msg)
 
     @filter.command("象棋引擎列表")
@@ -159,4 +230,8 @@ class ChessEnginePlugin(Star):
 
     async def terminate(self):
         """插件卸载时清理"""
+        if self._site:
+            await self._site.stop()
+        if self._runner:
+            await self._runner.cleanup()
         logger.info("[ChessEngine] 插件已卸载")

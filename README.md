@@ -89,6 +89,63 @@ Pikafish 可执行文件路径。
 | 默认值 | 空 |
 | 说明 | 留空自动检测 bin/pikafish 目录，也可手动指定完整路径 |
 
+### http_port
+
+HTTP 引擎服务端口。
+
+| 属性 | 值 |
+|------|-----|
+| 类型 | int |
+| 默认值 | 0（禁用） |
+| 范围 | 0-65535 |
+| 说明 | 设为 0 禁用。启用后其他插件可通过 HTTP 调用本插件引擎。推荐 18080 |
+
+---
+
+## 兼容 chess_arena v3.1.0
+
+本插件可与 [astrbot_plugin_chess_arena](https://github.com/zxx624/astrbot_plugin_chess_arena) v3.1.0 配合使用，为 chess_arena 提供自定义引擎能力。
+
+### 配置步骤
+
+1. **本插件配置**：设置 `http_port = 18080`，选择想要的引擎（如 pikafish）
+
+2. **chess_arena 配置**：
+   - `engine_mode` 选择 `custom_http`
+   - `custom_engine_http_url` 填 `http://127.0.0.1:18080/analyze`
+
+### 接口协议
+
+**请求格式**（chess_arena POST 到本插件）：
+
+```json
+{
+    "fen": "rnbakabnr/9/1c5c1/p1p1p1p1p/9/9/P1P1P1P1P/1C5C1/9/RNBAKABNR w",
+    "legal_moves": ["a0a1", "b2b3", "c4c5"],
+    "side": "red",
+    "depth": 4,
+    "timeout_ms": 8000,
+    "bot_name": "MyBot",
+    "chess_style": "random"
+}
+```
+
+**响应格式**（本插件返回给 chess_arena）：
+
+```json
+{
+    "best_move": "h2e2"
+}
+```
+
+### HTTP 端点
+
+| 端点 | 方法 | 说明 |
+|------|------|------|
+| `/analyze` | POST | 分析局面，返回最佳走法 |
+| `/health` | GET | 健康检查 |
+| `/info` | GET | 引擎信息 |
+
 ---
 
 ## 对外接口
