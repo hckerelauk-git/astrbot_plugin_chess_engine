@@ -1,5 +1,4 @@
 import asyncio
-import shutil
 from pathlib import Path
 
 from .base import ChessEngine, EngineResult

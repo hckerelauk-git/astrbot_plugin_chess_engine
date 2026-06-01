@@ -1,5 +1,3 @@
-import os
-import sys
 import zipfile
 import platform
 from pathlib import Path
