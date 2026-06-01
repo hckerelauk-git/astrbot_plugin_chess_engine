@@ -12,6 +12,9 @@
 - UCI 选项值自动校验范围，防止非法参数导致引擎异常
 - `analyze()` 超时根据 movetime 动态计算，不再硬编码 120s
 - 修复 `uninstall()` 删除后多余重建目录的问题
+- MultiPV 上限修正为 500（与 Pikafish 实际一致）
+- UCI 交互加入 `ucinewgame` 清除残局信息，避免干扰搜索
+- UCI 交互加入 `isready` 同步，确保 setoption 生效后再搜索
 
 ## [1.0.2] - 2026-06-01
 

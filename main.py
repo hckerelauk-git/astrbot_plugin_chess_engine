@@ -157,7 +157,7 @@ class PikafishEngine(ChessEngine):
         lines.append(f"setoption name Ponder value {str(ponder).lower()}")
 
         multipv = int(opts.get("multipv", 1))
-        multipv = max(1, min(128, multipv))
+        multipv = max(1, min(500, multipv))
         lines.append(f"setoption name MultiPV value {multipv}")
 
         return lines
@@ -255,7 +255,8 @@ class PikafishEngine(ChessEngine):
             go_cmd = f"go depth {depth}"
             proc_timeout = 120
 
-        uci_commands = ["uci"] + setoption_lines + [
+        uci_commands = ["uci", "ucinewgame", "isready"] + setoption_lines + [
+            "isready",
             f"position fen {fen}",
             go_cmd,
             "quit",
