@@ -192,9 +192,14 @@ class PikafishEngine(ChessEngine):
             if p.exists() and p.is_file():
                 return p
 
-        direct = self._bin_dir() / ("pikafish.exe" if platform.system().lower() == "windows" else "pikafish")
+        ext = ".exe" if platform.system().lower() == "windows" else ""
+        direct = self._bin_dir() / f"pikafish{ext}"
         if direct.exists() and direct.is_file():
             return direct
+
+        for f in self._bin_dir().rglob(f"pikafish*{ext}"):
+            if f.is_file() and f.name != f"pikafish{ext}":
+                return f
 
         return None
 

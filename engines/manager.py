@@ -10,17 +10,17 @@ from engines.random_engine import RandomEngine
 class EngineManager:
     """引擎管理器 - 管理所有可用引擎"""
 
-    def __init__(self, arena_base: str = "", token: str = ""):
+    def __init__(self, arena_base: str = "", token: str = "", pikafish_uci_options: dict | None = None):
         self._engines: dict[str, ChessEngine] = {}
         self._current_name: str = "xqwlight"
         self._arena_base = arena_base
         self._token = token
 
-        self._init_engines()
+        self._init_engines(pikafish_uci_options or {})
 
-    def _init_engines(self):
+    def _init_engines(self, pikafish_uci_options: dict):
         self._engines["xqwlight"] = XqwlightEngine(self._arena_base, self._token)
-        self._engines["pikafish"] = PikafishEngine()
+        self._engines["pikafish"] = PikafishEngine("", pikafish_uci_options)
         self._engines["elephantfish"] = ElephantfishEngine()
         self._engines["random"] = RandomEngine()
 
@@ -32,7 +32,12 @@ class EngineManager:
 
     def set_pikafish_path(self, path: str):
         if "pikafish" in self._engines:
-            self._engines["pikafish"]._custom_path = path
+            self._engines["pikafish"].set_custom_path(path)
+
+    def set_pikafish_uci_options(self, options: dict):
+        engine = self._engines.get("pikafish")
+        if engine and hasattr(engine, "set_uci_options"):
+            engine.set_uci_options(options)
 
     def set_current(self, name: str) -> bool:
         if name in self._engines:
