@@ -1,20 +1,23 @@
 {
   "engine_select": {
-    "type": "select",
-    "options": ["xqwlight", "pikafish", "elephantfish", "random"],
+    "type": "string",
     "default": "xqwlight",
-    "description": "选择象棋引擎"
+    "description": "选择象棋引擎",
+    "hint": "xqwlight 平台 API 零消耗；pikafish 最强本地引擎；elephantfish 轻量 Python 引擎；random 随机走法",
+    "options": ["xqwlight", "pikafish", "elephantfish", "random"]
   },
   "engine_depth": {
-    "type": "number",
+    "type": "int",
     "default": 4,
     "min": 1,
     "max": 10,
-    "description": "引擎搜索深度（1-10）"
+    "description": "引擎搜索深度（1-10）",
+    "hint": "越大棋力越强但越慢。推荐 4-6"
   },
   "pikafish_path": {
     "type": "string",
     "default": "",
-    "description": "Pikafish 可执行文件路径（留空自动检测）"
+    "description": "Pikafish 可执行文件路径",
+    "hint": "留空自动检测 bin/pikafish 目录，也可手动指定完整路径"
   }
 }
