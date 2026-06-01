@@ -124,27 +124,48 @@ class PikafishEngine(ChessEngine):
     def __init__(self, custom_path: str = ""):
         self._custom_path = custom_path.strip()
 
+    def set_custom_path(self, path: str):
+        self._custom_path = path.strip()
+
     def _bin_dir(self) -> Path:
         path = Path(__file__).resolve().parent / "bin" / "pikafish"
         path.mkdir(parents=True, exist_ok=True)
         return path
 
+    def list_binaries(self) -> list[Path]:
+        """列出解压后所有可能的 Pikafish 二进制，由用户手动选择。"""
+        bin_dir = self._bin_dir()
+        candidates: list[Path] = []
+        if not bin_dir.exists():
+            return candidates
+        for f in bin_dir.rglob("*"):
+            if not f.is_file():
+                continue
+            if f.suffix.lower() in {".7z", ".zip", ".txt", ".md", ".log"}:
+                continue
+            name = f.name.lower()
+            if "pikafish" not in name and "pikafish" not in "".join(part.lower() for part in f.parts):
+                continue
+            candidates.append(f)
+        candidates.sort(key=lambda p: len(p.relative_to(bin_dir).parts))
+        return candidates
+
+    def pick_binary(self, index: int) -> Path | None:
+        candidates = self.list_binaries()
+        if index < 1 or index > len(candidates):
+            return None
+        return candidates[index - 1]
+
     def _get_binary_path(self) -> Path | None:
         if self._custom_path:
             p = Path(self._custom_path)
-            if p.exists():
+            if p.exists() and p.is_file():
                 return p
-        filename = "pikafish.exe" if platform.system().lower() == "windows" else "pikafish"
-        direct = self._bin_dir() / filename
-        if direct.exists():
+
+        direct = self._bin_dir() / ("pikafish.exe" if platform.system().lower() == "windows" else "pikafish")
+        if direct.exists() and direct.is_file():
             return direct
-        for f in self._bin_dir().rglob(filename):
-            if f.is_file():
-                return f
-        pattern = "*pikafish*.exe" if platform.system().lower() == "windows" else "*pikafish*"
-        for f in self._bin_dir().rglob(pattern):
-            if f.is_file() and not f.suffix.lower() in {".7z", ".zip", ".txt", ".md"}:
-                return f
+
         return None
 
     def get_name(self) -> str:
@@ -152,10 +173,15 @@ class PikafishEngine(ChessEngine):
 
     def get_version(self) -> str:
         binary = self._get_binary_path()
-        return binary.parent.name if binary else "not installed"
+        if binary:
+            return binary.name or "installed"
+        binaries = self.list_binaries()
+        if binaries:
+            return f"candidates:{len(binaries)}"
+        return "not installed"
 
     def is_installed(self) -> bool:
-        return self._get_binary_path() is not None
+        return bool(self.list_binaries())
 
     async def install(self) -> bool:
         if self.is_installed():
@@ -168,20 +194,26 @@ class PikafishEngine(ChessEngine):
             return False
 
     async def uninstall(self) -> bool:
-        binary = self._get_binary_path()
-        if binary and binary.exists():
-            try:
-                binary.unlink()
-                return True
-            except Exception:
-                return False
-        return True
+        try:
+            shutil.rmtree(self._bin_dir(), ignore_errors=True)
+            self._bin_dir()
+            self._custom_path = ""
+            return True
+        except Exception:
+            return False
 
     async def analyze(self, fen: str, legal_moves: list[str], depth: int = 4) -> EngineResult:
         if not legal_moves:
             raise RuntimeError("无合法走法可选")
         binary = self._get_binary_path()
         if not binary:
+            candidates = self.list_binaries()
+            if candidates:
+                lines = ["Pikafish 已解压，但还没选具体二进制。"]
+                for i, item in enumerate(candidates, 1):
+                    lines.append(f"{i}. {item.relative_to(self._bin_dir())}")
+                lines.append("用 设置象棋引擎路径 <完整路径> 选择一个")
+                raise RuntimeError("\n".join(lines))
             raise RuntimeError("Pikafish 未安装，请先运行: 安装象棋引擎 pikafish")
         proc = await asyncio.create_subprocess_exec(
             str(binary),
@@ -227,10 +259,8 @@ class PikafishEngine(ChessEngine):
         else:
             raise RuntimeError(f"不支持的压缩格式: {suffix}")
         archive_path.unlink(missing_ok=True)
-        # 给二进制文件添加执行权限（Linux 需要）
         if platform.system().lower() != "windows":
-            binary = self._get_binary_path()
-            if binary:
+            for binary in self.list_binaries():
                 os.chmod(str(binary), 0o755)
 
     async def _latest_release(self) -> dict:
@@ -254,29 +284,7 @@ class PikafishEngine(ChessEngine):
             raise RuntimeError("缺少 py7zr 依赖，无法解压 Pikafish 的 7z 包") from exc
         with py7zr.SevenZipFile(archive_path, mode="r") as zf:
             zf.extractall(path=self._bin_dir())
-        self._fix_nested_binary()
-
-    def _fix_nested_binary(self) -> None:
-        filename = "pikafish.exe" if platform.system().lower() == "windows" else "pikafish"
-        if (self._bin_dir() / filename).exists():
-            return
-        for f in self._bin_dir().rglob(filename):
-            if f.is_file():
-                target = self._bin_dir() / filename
-                shutil.move(str(f), str(target))
-                if platform.system().lower() != "windows":
-                    os.chmod(str(target), 0o755)
-                return
-        pattern = "*pikafish*.exe" if platform.system().lower() == "windows" else "*pikafish*"
-        for f in self._bin_dir().rglob(pattern):
-            if f.is_file() and not f.suffix.lower() in {".7z", ".zip", ".txt", ".md"}:
-                target = self._bin_dir() / filename
-                if f.resolve() != target.resolve():
-                    shutil.move(str(f), str(target))
-                # 添加执行权限
-                if platform.system().lower() != "windows":
-                    os.chmod(str(target), 0o755)
-                return
+        # 不做自动整理，保留原始目录结构，交给用户手动选择
 
 
 class ElephantfishEngine(ChessEngine):
@@ -337,6 +345,10 @@ class EngineManager:
 
     def set_pikafish_path(self, path: str):
         self._engines["pikafish"]._custom_path = path
+
+    def list_pikafish_binaries(self) -> list[str]:
+        engine = self._engines["pikafish"]
+        return [str(p) for p in engine.list_binaries()]
 
     def set_current(self, name: str) -> bool:
         if name in self._engines:
@@ -459,12 +471,37 @@ class ChessEnginePlugin(Star):
             yield event.plain_result(f"未知引擎: {engine_name}\n支持：xqwlight、pikafish、elephantfish、random")
             return
         if engine.is_installed():
-            yield event.plain_result(f"{engine_name} 已安装")
+            if engine_name == "pikafish":
+                bins = self._manager.list_pikafish_binaries()
+                if bins:
+                    lines = [f"{engine_name} 已安装，可选版本:"]
+                    for idx, item in enumerate(bins, 1):
+                        lines.append(f"{idx}. {item}")
+                    lines.append("用 选择象棋引擎版本 <编号> 选当前系统对应的")
+                    yield event.plain_result("\n".join(lines))
+                else:
+                    yield event.plain_result(f"{engine_name} 已安装")
+            else:
+                yield event.plain_result(f"{engine_name} 已安装")
             return
         yield event.plain_result(f"正在安装 {engine_name}，请稍候...")
         try:
             success = await asyncio.wait_for(engine.install(), timeout=300)
-            yield event.plain_result(f"{engine_name} 安装成功！" if success else f"{engine_name} 安装失败")
+            if not success:
+                yield event.plain_result(f"{engine_name} 安装失败")
+                return
+            if engine_name == "pikafish":
+                bins = self._manager.list_pikafish_binaries()
+                if bins:
+                    lines = [f"{engine_name} 安装成功，可选版本:"]
+                    for idx, item in enumerate(bins, 1):
+                        lines.append(f"{idx}. {item}")
+                    lines.append("用 选择象棋引擎版本 <编号> 选当前系统对应的")
+                    yield event.plain_result("\n".join(lines))
+                else:
+                    yield event.plain_result(f"{engine_name} 安装成功，但未找到二进制文件")
+            else:
+                yield event.plain_result(f"{engine_name} 安装成功")
         except asyncio.TimeoutError:
             yield event.plain_result(f"{engine_name} 安装超时")
         except Exception as exc:
@@ -488,6 +525,55 @@ class ChessEnginePlugin(Star):
             yield event.plain_result(f"{engine_name} 已卸载" if success else f"{engine_name} 卸载失败")
         except Exception as exc:
             yield event.plain_result(f"{engine_name} 卸载异常: {exc}")
+
+    @filter.command("设置象棋引擎路径")
+    async def set_engine_path(self, event: AstrMessageEvent, path: str):
+        if not path:
+            yield event.plain_result("用法：设置象棋引擎路径 <完整路径>")
+            return
+        path = path.strip()
+        if not Path(path).exists():
+            yield event.plain_result(f"路径不存在: {path}")
+            return
+        self._manager.set_pikafish_path(path)
+        self._pikafish_path = path
+        self.config["pikafish_path"] = path
+        yield event.plain_result(f"已设置 pikafish 路径: {path}")
+
+    @filter.command("列出象棋引擎二进制")
+    async def list_engine_bins(self, event: AstrMessageEvent):
+        bins = self._manager.list_pikafish_binaries()
+        if not bins:
+            yield event.plain_result("还没找到 pikafish 二进制，请先安装象棋引擎 pikafish")
+            return
+        lines = ["可选的 pikafish 二进制:"]
+        for idx, item in enumerate(bins, 1):
+            lines.append(f"{idx}. {item}")
+        lines.append("用 选择象棋引擎版本 <编号> 直接选当前系统对应的那个")
+        yield event.plain_result("\n".join(lines))
+
+    @filter.command("选择象棋引擎版本")
+    async def choose_engine_bin(self, event: AstrMessageEvent, index: str):
+        if not index:
+            yield event.plain_result("用法：选择象棋引擎版本 <编号>")
+            return
+        try:
+            idx = int(index.strip())
+        except ValueError:
+            yield event.plain_result("编号必须是数字")
+            return
+        engine = self._manager.get_engine("pikafish")
+        if not engine:
+            yield event.plain_result("pikafish 引擎不可用")
+            return
+        binary = engine.pick_binary(idx)
+        if not binary:
+            yield event.plain_result("编号无效，请先用 列出象棋引擎二进制 查看")
+            return
+        engine.set_custom_path(str(binary))
+        self._pikafish_path = str(binary)
+        self.config["pikafish_path"] = str(binary)
+        yield event.plain_result(f"已选择: {binary}")
 
     @filter.command("切换象棋引擎")
     async def switch_engine(self, event: AstrMessageEvent, engine_name: str):

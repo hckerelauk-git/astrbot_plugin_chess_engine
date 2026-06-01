@@ -18,7 +18,7 @@
     "type": "string",
     "default": "",
     "description": "Pikafish 可执行文件路径",
-    "hint": "留空自动检测 bin/pikafish 目录，也可手动指定完整路径"
+    "hint": "留空则不自动选择，安装后请用 选择象棋引擎版本 按编号指定当前系统版本"
   },
   "http_port": {
     "type": "int",

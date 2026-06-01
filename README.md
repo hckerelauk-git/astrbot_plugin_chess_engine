@@ -1,18 +1,18 @@
 # astrbot_plugin_chess_engine
 
-> AstrBot 象棋引擎插件 - 支持多种引擎自动安装和切换，提供对外接口供其他插件调用。
+> AstrBot 象棋引擎插件 - 支持多种引擎安装和切换，提供对外接口供其他插件调用。
 
 | 信息 | 内容 |
 |------|------|
 | **插件名** | astrbot_plugin_chess_engine |
-| **版本** | 1.0.0 |
+| **版本** | 1.0.2 |
 | **作者** | 九喵 |
 | **许可证** | MIT License |
 | **AstrBot 最低版本** | 4.10.0 |
 | **依赖** | aiohttp >= 3.8, py7zr >= 0.22.0 |
 | **仓库** | https://github.com/hckerelauk-git/astrbot_plugin_chess_engine |
 
-> **Linux 用户注意**：Pikafish 解压后需要手动 `chmod +x bin/pikafish/pikafish`，或让插件自动通过 `安装象棋引擎 pikafish` 重新安装（v1.0.1 已自动添加执行权限）。
+> **Pikafish 版本选择注意**：解压后会保留多个系统版本，请使用 `列出象棋引擎二进制` 查看，再用 `选择象棋引擎版本 <编号>` 手动选当前系统对应版本，避免 Linux 误选到 macOS 版本。
 
 ---
 
@@ -20,7 +20,7 @@
 
 - 支持 4 种象棋引擎：xqwlight、pikafish、elephantfish、random
 - 通过聊天命令安装/卸载/切换引擎
-- Pikafish 支持自动下载预编译二进制
+- Pikafish 支持自动下载预编译二进制，并允许手动选择具体系统版本
 - 提供简洁的对外接口供其他插件调用
 
 ---
@@ -49,11 +49,13 @@
 
 | 命令 | 说明 | 示例 |
 |------|------|------|
-| `安装象棋引擎 <名称>` | 下载安装指定引擎 | `安装象棋引擎 pikafish` |
+| `安装象棋引擎 <名称>` | 下载安装指定引擎，Pikafish 安装后自动列出可选版本 | `安装象棋引擎 pikafish` |
 | `卸载象棋引擎 <名称>` | 卸载指定引擎 | `卸载象棋引擎 pikafish` |
 | `切换象棋引擎 <名称>` | 切换当前引擎 | `切换象棋引擎 pikafish` |
 | `象棋引擎状态` | 查看当前引擎信息 | `象棋引擎状态` |
 | `象棋引擎列表` | 列出所有支持的引擎 | `象棋引擎列表` |
+| `列出象棋引擎二进制` | 列出 Pikafish 可选二进制 | `列出象棋引擎二进制` |
+| `选择象棋引擎版本 <编号>` | 按编号选择具体二进制 | `选择象棋引擎版本 1` |
 
 ---
 
@@ -89,7 +91,7 @@ Pikafish 可执行文件路径。
 |------|-----|
 | 类型 | string |
 | 默认值 | 空 |
-| 说明 | 留空自动检测 bin/pikafish 目录，也可手动指定完整路径 |
+| 说明 | 留空则不自动选择，安装后请用 `选择象棋引擎版本 <编号>` 指定当前系统版本，或用 `设置象棋引擎路径 <完整路径>` 直接指定 |
 
 ### http_port
 
@@ -111,8 +113,9 @@ HTTP 引擎服务端口。
 ### 配置步骤
 
 1. **本插件配置**：设置 `http_port = 18080`，选择想要的引擎（如 pikafish）
+2. **Pikafish 版本选择**：安装后先执行 `列出象棋引擎二进制`，再用 `选择象棋引擎版本 <编号>` 选当前系统版本
 
-2. **chess_arena 配置**：
+3. **chess_arena 配置**：
    - `engine_mode` 选择 `custom_http`
    - `custom_engine_http_url` 填 `http://127.0.0.1:18080/analyze`
 
@@ -391,7 +394,7 @@ astrbot_plugin_chess_engine/
 │   ├── elephantfish.py  # elephantfish 引擎
 │   ├── random_engine.py # 随机引擎
 │   └── download.py      # Pikafish 下载工具
-└── bin/                 # Pikafish 二进制存放（用户自行安装）
+└── bin/                 # Pikafish 二进制存放（解压后保留多系统版本）
     └── .gitkeep
 ```
 
