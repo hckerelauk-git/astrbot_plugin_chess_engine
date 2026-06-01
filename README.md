@@ -12,6 +12,8 @@
 | **依赖** | aiohttp >= 3.8 |
 | **仓库** | https://github.com/hckerelauk-git/astrbot_plugin_chess_engine |
 
+---
+
 ## 功能
 
 - 支持 4 种象棋引擎：xqwlight、pikafish、elephantfish、random
@@ -19,20 +21,27 @@
 - Pikafish 支持自动下载预编译二进制
 - 提供简洁的对外接口供其他插件调用
 
+---
+
 ## 安装
 
 1. 将本仓库放到 AstrBot 的 `data/plugins/astrbot_plugin_chess_engine/` 目录
 2. 安装依赖：`pip install aiohttp>=3.8`
 3. 重启 AstrBot
+4. 在 WebUI 插件配置页面选择引擎
+
+---
 
 ## 支持的引擎
 
 | 引擎 | 安装方式 | 说明 |
 |------|---------|------|
-| xqwlight | 无需安装（平台 API） | 默认引擎，调用楚河平台 API，零本地消耗 |
-| pikafish | 下载预编译二进制 | 最强开源引擎，基于 Stockfish |
-| elephantfish | pip install | 轻量 Python 引擎 |
-| random | 无需安装 | 随机走法，用于测试 |
+| **xqwlight** | 无需安装（平台 API） | 默认引擎，调用楚河平台 API，零本地消耗 |
+| **pikafish** | 下载预编译二进制 | 最强开源引擎，基于 Stockfish |
+| **elephantfish** | pip install | 轻量 Python 引擎 |
+| **random** | 无需安装 | 随机走法，用于测试 |
+
+---
 
 ## 聊天命令
 
@@ -44,22 +53,51 @@
 | `象棋引擎状态` | 查看当前引擎信息 | `象棋引擎状态` |
 | `象棋引擎列表` | 列出所有支持的引擎 | `象棋引擎列表` |
 
+---
+
 ## 配置项
 
-| 配置项 | 类型 | 默认值 | 说明 |
-|--------|------|--------|------|
-| `engine_select` | select | xqwlight | 选择引擎 |
-| `engine_depth` | number | 4 | 搜索深度（1-10） |
-| `pikafish_path` | string | 空 | Pikafish 可执行文件路径（留空自动检测） |
+### engine_select
+
+选择当前使用的象棋引擎。
+
+| 属性 | 值 |
+|------|-----|
+| 类型 | string |
+| 默认值 | xqwlight |
+| 可选值 | xqwlight, pikafish, elephantfish, random |
+| 说明 | xqwlight 平台 API 零消耗；pikafish 最强本地引擎；elephantfish 轻量 Python 引擎；random 随机走法 |
+
+### engine_depth
+
+引擎搜索深度。
+
+| 属性 | 值 |
+|------|-----|
+| 类型 | int |
+| 默认值 | 4 |
+| 范围 | 1-10 |
+| 说明 | 越大棋力越强但越慢。推荐 4-6 |
+
+### pikafish_path
+
+Pikafish 可执行文件路径。
+
+| 属性 | 值 |
+|------|-----|
+| 类型 | string |
+| 默认值 | 空 |
+| 说明 | 留空自动检测 bin/pikafish 目录，也可手动指定完整路径 |
+
+---
 
 ## 对外接口
 
-其他插件可通过以下接口调用本插件的引擎能力：
+其他插件可通过以下接口调用本插件的引擎能力。
 
 ### 获取插件实例
 
 ```python
-# 在其他插件中
 chess_engine = self.context.get_plugin("astrbot_plugin_chess_engine")
 ```
 
@@ -72,9 +110,12 @@ async def analyze_position(self, fen: str, legal_moves: list[str], depth: int = 
 ```
 
 **参数：**
-- `fen` (str): 局面的 FEN 字符串
-- `legal_moves` (list[str]): 合法走法列表
-- `depth` (int, 可选): 搜索深度，默认使用配置值
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| fen | str | 是 | 局面的 FEN 字符串 |
+| legal_moves | list[str] | 是 | 合法走法列表 |
+| depth | int | 否 | 搜索深度，默认使用配置值 |
 
 **返回：** str - 最佳走法
 
@@ -161,7 +202,11 @@ def list_engines(self) -> list[dict]
 ]
 ```
 
+---
+
 ## 其他插件使用示例
+
+### 示例 1：调用引擎分析
 
 ```python
 from astrbot.api.star import Context, Star
@@ -186,11 +231,49 @@ class MyChessPlugin(Star):
             depth=6
         )
         
-        # 提交走法（这里只是示例，实际需要调用平台 API）
+        # 提交走法到平台
         await self.submit_move(best_move)
         
         yield event.plain_result(f"走棋: {best_move}")
 ```
+
+### 示例 2：获取引擎信息
+
+```python
+chess_engine = self.context.get_plugin("astrbot_plugin_chess_engine")
+
+# 获取当前引擎信息
+info = chess_engine.get_engine_info()
+print(f"当前引擎: {info['name']}")
+print(f"搜索深度: {info['depth']}")
+print(f"已安装: {info['installed']}")
+
+# 获取所有引擎状态
+engines = chess_engine.list_engines()
+for engine in engines:
+    status = "已安装" if engine["installed"] else "未安装"
+    current = " [当前]" if engine["current"] else ""
+    print(f"  {engine['name']} - {status}{current}")
+```
+
+### 示例 3：获取详细结果
+
+```python
+chess_engine = self.context.get_plugin("astrbot_plugin_chess_engine")
+
+result = await chess_engine.analyze_position_detail(
+    fen="rnbakabnr/9/1c5c1/p1p1p1p1p/9/9/P1P1P1P1P/1C5C1/9/RNBAKABNR w",
+    legal_moves=["a0a1", "b2b3", "c4c5"],
+    depth=8
+)
+
+print(f"最佳走法: {result.best_move}")
+print(f"评分: {result.score}")
+print(f"搜索深度: {result.depth}")
+print(f"耗时: {result.time_ms}ms")
+```
+
+---
 
 ## 引擎基类
 
@@ -204,24 +287,32 @@ class MyCustomEngine(ChessEngine):
     """自定义象棋引擎"""
     
     def get_name(self) -> str:
+        """引擎名称"""
         return "my_engine"
     
     def get_version(self) -> str:
+        """引擎版本"""
         return "1.0.0"
     
     def is_installed(self) -> bool:
+        """检查引擎是否已安装"""
         return True
     
     async def install(self) -> bool:
+        """安装引擎，返回是否成功"""
         return True
     
     async def uninstall(self) -> bool:
+        """卸载引擎，返回是否成功"""
         return True
     
     async def analyze(self, fen: str, legal_moves: list[str], depth: int = 4) -> EngineResult:
+        """分析局面，从 legal_moves 中选择最佳走法"""
         # 实现你的引擎逻辑
         return EngineResult(best_move=legal_moves[0], depth=depth)
 ```
+
+---
 
 ## 目录结构
 
@@ -244,6 +335,8 @@ astrbot_plugin_chess_engine/
 └── bin/                 # Pikafish 二进制存放（用户自行安装）
     └── .gitkeep
 ```
+
+---
 
 ## 许可证
 
