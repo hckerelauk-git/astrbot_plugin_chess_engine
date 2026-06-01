@@ -1,6 +1,6 @@
 import random
 
-from .base import ChessEngine, EngineResult
+from engines.base import ChessEngine, EngineResult
 
 
 class RandomEngine(ChessEngine):

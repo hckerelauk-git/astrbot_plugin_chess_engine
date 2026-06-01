@@ -2,7 +2,7 @@ import random
 import subprocess
 import sys
 
-from .base import ChessEngine, EngineResult
+from engines.base import ChessEngine, EngineResult
 
 
 class ElephantfishEngine(ChessEngine):

@@ -1,10 +1,10 @@
 from astrbot.api import logger
 
-from .base import ChessEngine
-from .pikafish import PikafishEngine
-from .xqwlight import XqwlightEngine
-from .elephantfish import ElephantfishEngine
-from .random_engine import RandomEngine
+from engines.base import ChessEngine
+from engines.pikafish import PikafishEngine
+from engines.xqwlight import XqwlightEngine
+from engines.elephantfish import ElephantfishEngine
+from engines.random_engine import RandomEngine
 
 
 class EngineManager:

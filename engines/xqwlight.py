@@ -1,7 +1,7 @@
 import random
 import aiohttp
 
-from .base import ChessEngine, EngineResult
+from engines.base import ChessEngine, EngineResult
 
 
 class XqwlightEngine(ChessEngine):

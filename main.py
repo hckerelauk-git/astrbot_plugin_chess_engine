@@ -1,6 +1,13 @@
 from __future__ import annotations
 
 import asyncio
+import sys
+from pathlib import Path
+
+# 把插件目录加入 sys.path，确保子模块能被导入
+_sys_path_added = str(Path(__file__).resolve().parent)
+if _sys_path_added not in sys.path:
+    sys.path.insert(0, _sys_path_added)
 
 from aiohttp import web
 
@@ -8,8 +15,8 @@ from astrbot.api import logger
 from astrbot.api.event import AstrMessageEvent, filter
 from astrbot.api.star import Context, Star
 
-from .engines import EngineManager
-from .engines.base import EngineResult
+from engines import EngineManager
+from engines.base import EngineResult
 
 
 class ChessEnginePlugin(Star):

@@ -1,8 +1,8 @@
 import asyncio
 from pathlib import Path
 
-from .base import ChessEngine, EngineResult
-from .download import find_pikafish_binary, download_pikafish, get_pikafish_dir
+from engines.base import ChessEngine, EngineResult
+from engines.download import find_pikafish_binary, download_pikafish, get_pikafish_dir
 
 
 class PikafishEngine(ChessEngine):
