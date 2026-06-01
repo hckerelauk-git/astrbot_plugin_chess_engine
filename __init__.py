@@ -1,0 +1,1 @@
+"""AstrBot Chess Engine plugin package."""
