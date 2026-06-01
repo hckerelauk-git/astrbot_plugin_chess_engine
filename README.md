@@ -9,8 +9,10 @@
 | **作者** | 九喵 |
 | **许可证** | MIT License |
 | **AstrBot 最低版本** | 4.10.0 |
-| **依赖** | aiohttp >= 3.8 |
+| **依赖** | aiohttp >= 3.8, py7zr >= 0.22.0 |
 | **仓库** | https://github.com/hckerelauk-git/astrbot_plugin_chess_engine |
+
+> **Linux 用户注意**：Pikafish 解压后需要手动 `chmod +x bin/pikafish/pikafish`，或让插件自动通过 `安装象棋引擎 pikafish` 重新安装（v1.0.1 已自动添加执行权限）。
 
 ---
 

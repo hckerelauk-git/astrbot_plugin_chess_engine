@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-import json
+import os
 import platform
 import random
 import shutil
@@ -227,6 +227,11 @@ class PikafishEngine(ChessEngine):
         else:
             raise RuntimeError(f"不支持的压缩格式: {suffix}")
         archive_path.unlink(missing_ok=True)
+        # 给二进制文件添加执行权限（Linux 需要）
+        if platform.system().lower() != "windows":
+            binary = self._get_binary_path()
+            if binary:
+                os.chmod(str(binary), 0o755)
 
     async def _latest_release(self) -> dict:
         async with aiohttp.ClientSession() as session:
@@ -257,7 +262,10 @@ class PikafishEngine(ChessEngine):
             return
         for f in self._bin_dir().rglob(filename):
             if f.is_file():
-                shutil.move(str(f), str(self._bin_dir() / filename))
+                target = self._bin_dir() / filename
+                shutil.move(str(f), str(target))
+                if platform.system().lower() != "windows":
+                    os.chmod(str(target), 0o755)
                 return
         pattern = "*pikafish*.exe" if platform.system().lower() == "windows" else "*pikafish*"
         for f in self._bin_dir().rglob(pattern):
@@ -265,6 +273,9 @@ class PikafishEngine(ChessEngine):
                 target = self._bin_dir() / filename
                 if f.resolve() != target.resolve():
                     shutil.move(str(f), str(target))
+                # 添加执行权限
+                if platform.system().lower() != "windows":
+                    os.chmod(str(target), 0o755)
                 return
 
 

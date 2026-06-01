@@ -1,5 +1,15 @@
 # 更新日志
 
+## [1.0.1] - 2026-06-01
+
+### 修复
+- **Linux Pikafish 权限问题**：解压后自动 `chmod +x` 添加执行权限，避免 `Permission denied`
+- `_fix_nested_binary()` 中两处移动文件后都加上 `os.chmod(target, 0o755)`
+
+### 文档
+- README 增加 Linux 权限注意事项
+- metadata.yaml 帮助信息增加 Linux 权限说明
+
 ## [1.0.0] - 2026-06-01
 
 ### 新增
