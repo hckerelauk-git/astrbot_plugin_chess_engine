@@ -572,7 +572,10 @@ class ChessEnginePlugin(Star):
         engine.set_custom_path(str(binary))
         self._pikafish_path = str(binary)
         self.config["pikafish_path"] = str(binary)
-        yield event.plain_result(f"已选择: {binary}")
+        self._manager.set_current("pikafish")
+        self._engine_select = "pikafish"
+        self.config["engine_select"] = "pikafish"
+        yield event.plain_result(f"已选择: {binary}\n已切换到 pikafish 引擎")
 
     @filter.command("切换象棋引擎")
     async def switch_engine(self, event: AstrMessageEvent, engine_name: str):
