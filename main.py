@@ -11,7 +11,6 @@ import zipfile
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
 import aiohttp
 from aiohttp import web
@@ -212,7 +211,7 @@ class PikafishEngine(ChessEngine):
                 lines = ["Pikafish 已解压，但还没选具体二进制。"]
                 for i, item in enumerate(candidates, 1):
                     lines.append(f"{i}. {item.relative_to(self._bin_dir())}")
-                lines.append("用 设置象棋引擎路径 <完整路径> 选择一个")
+                lines.append("用 选择象棋引擎版本 <编号> 选当前系统对应的")
                 raise RuntimeError("\n".join(lines))
             raise RuntimeError("Pikafish 未安装，请先运行: 安装象棋引擎 pikafish")
         proc = await asyncio.create_subprocess_exec(
