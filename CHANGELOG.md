@@ -1,6 +1,6 @@
 # 更新日志
 
-## [1.0.3] - 2026-06-01
+## [1.14] - 2026-06-01
 
 ### 新增
 - Pikafish 引擎支持 UCI 选项配置：Threads、Hash、Move Overhead、Ponder、MultiPV
@@ -15,6 +15,7 @@
 - MultiPV 上限修正为 500（与 Pikafish 实际一致）
 - UCI 交互加入 `ucinewgame` 清除残局信息，避免干扰搜索
 - UCI 交互加入 `isready` 同步，确保 setoption 生效后再搜索
+- `engines/` 包同步支持 UCI 选项、movetime、手动选版本辅助方法、nnue 复制与 `pikafish-*` 二进制识别
 
 ## [1.0.2] - 2026-06-01
 

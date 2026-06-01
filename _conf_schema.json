@@ -58,7 +58,7 @@
     "min": 1,
     "max": 500,
     "description": "Pikafish 多 PV 数",
-    "hint": "仅对 Pikafish 有效。设为 1 性能最佳"
+    "hint": "仅对 Pikafish 有效。最大 500，设为 1 性能最佳"
   },
   "pikafish_ponder": {
     "type": "bool",

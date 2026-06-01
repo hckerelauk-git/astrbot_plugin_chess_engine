@@ -39,6 +39,12 @@ class EngineManager:
         if engine and hasattr(engine, "set_uci_options"):
             engine.set_uci_options(options)
 
+    def list_pikafish_binaries(self) -> list[str]:
+        engine = self._engines.get("pikafish")
+        if not engine or not hasattr(engine, "list_binaries"):
+            return []
+        return [str(p) for p in engine.list_binaries()]
+
     def set_current(self, name: str) -> bool:
         if name in self._engines:
             self._current_name = name

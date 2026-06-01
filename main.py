@@ -171,7 +171,7 @@ class PikafishEngine(ChessEngine):
         for f in bin_dir.rglob("*"):
             if not f.is_file():
                 continue
-            if f.suffix.lower() in {".7z", ".zip", ".txt", ".md", ".log"}:
+            if f.suffix.lower() in {".7z", ".zip", ".txt", ".md", ".log", ".nnue"}:
                 continue
             name = f.name.lower()
             if "pikafish" not in name and "pikafish" not in "".join(part.lower() for part in f.parts):
@@ -198,7 +198,11 @@ class PikafishEngine(ChessEngine):
             return direct
 
         for f in self._bin_dir().rglob(f"pikafish*{ext}"):
-            if f.is_file() and f.name != f"pikafish{ext}":
+            if not f.is_file():
+                continue
+            if f.suffix.lower() == ".nnue":
+                continue
+            if f.name != f"pikafish{ext}":
                 return f
 
         return None
@@ -260,7 +264,9 @@ class PikafishEngine(ChessEngine):
             go_cmd = f"go depth {depth}"
             proc_timeout = 120
 
-        uci_commands = ["uci", "ucinewgame", "isready"] + setoption_lines + [
+        uci_commands = ["uci"] + setoption_lines + [
+            "isready",
+            "ucinewgame",
             "isready",
             f"position fen {fen}",
             go_cmd,

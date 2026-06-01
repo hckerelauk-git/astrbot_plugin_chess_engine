@@ -1,6 +1,4 @@
 import asyncio
-import os
-import platform
 import shutil
 from pathlib import Path
 
@@ -20,6 +18,27 @@ class PikafishEngine(ChessEngine):
 
     def set_uci_options(self, options: dict):
         self._uci_options = options
+
+    def list_binaries(self) -> list[Path]:
+        bin_dir = get_pikafish_dir()
+        candidates: list[Path] = []
+        for f in bin_dir.rglob("*"):
+            if not f.is_file():
+                continue
+            if f.suffix.lower() in {".7z", ".zip", ".txt", ".md", ".log", ".nnue"}:
+                continue
+            name = f.name.lower()
+            if "pikafish" not in name and "pikafish" not in "".join(part.lower() for part in f.parts):
+                continue
+            candidates.append(f)
+        candidates.sort(key=lambda p: len(p.relative_to(bin_dir).parts))
+        return candidates
+
+    def pick_binary(self, index: int) -> Path | None:
+        candidates = self.list_binaries()
+        if index < 1 or index > len(candidates):
+            return None
+        return candidates[index - 1]
 
     def _get_binary_path(self) -> Path | None:
         if self._custom_path:
@@ -55,10 +74,13 @@ class PikafishEngine(ChessEngine):
         binary = self._get_binary_path()
         if binary:
             return binary.name or "installed"
+        binaries = self.list_binaries()
+        if binaries:
+            return f"candidates:{len(binaries)}"
         return "not installed"
 
     def is_installed(self) -> bool:
-        return self._get_binary_path() is not None
+        return bool(self.list_binaries())
 
     async def install(self) -> bool:
         if self.is_installed():
@@ -104,7 +126,9 @@ class PikafishEngine(ChessEngine):
             go_cmd = f"go depth {depth}"
             proc_timeout = 120
 
-        uci_commands = ["uci", "ucinewgame", "isready"] + setoption_lines + [
+        uci_commands = ["uci"] + setoption_lines + [
+            "isready",
+            "ucinewgame",
             "isready",
             f"position fen {fen}",
             go_cmd,
