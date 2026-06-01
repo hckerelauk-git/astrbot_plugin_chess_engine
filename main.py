@@ -283,7 +283,19 @@ class PikafishEngine(ChessEngine):
             raise RuntimeError("缺少 py7zr 依赖，无法解压 Pikafish 的 7z 包") from exc
         with py7zr.SevenZipFile(archive_path, mode="r") as zf:
             zf.extractall(path=self._bin_dir())
-        # 不做自动整理，保留原始目录结构，交给用户手动选择
+        self._copy_nnue_to_subdirs()
+
+    def _copy_nnue_to_subdirs(self) -> None:
+        """将 pikafish.nnue 从根目录复制到每个平台子目录，确保引擎能找到权重文件"""
+        bin_dir = self._bin_dir()
+        nnue_root = bin_dir / "pikafish.nnue"
+        if not nnue_root.exists():
+            return
+        for child in bin_dir.iterdir():
+            if child.is_dir() and child.name.lower() not in {"wiki", "__pycache__"}:
+                target = child / "pikafish.nnue"
+                if not target.exists():
+                    shutil.copy2(str(nnue_root), str(target))
 
 
 class ElephantfishEngine(ChessEngine):
