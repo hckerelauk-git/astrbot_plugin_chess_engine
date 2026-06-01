@@ -126,16 +126,6 @@ class PikafishEngine(ChessEngine):
             go_cmd = f"go depth {depth}"
             proc_timeout = 120
 
-        uci_commands = ["uci"] + setoption_lines + [
-            "isready",
-            "ucinewgame",
-            "isready",
-            f"position fen {fen}",
-            go_cmd,
-            "quit",
-        ]
-        input_data = "\n".join(uci_commands) + "\n"
-
         proc = await asyncio.create_subprocess_exec(
             str(binary),
             stdin=asyncio.subprocess.PIPE,
@@ -144,10 +134,22 @@ class PikafishEngine(ChessEngine):
         )
 
         try:
-            stdout, stderr = await asyncio.wait_for(
-                proc.communicate(input=input_data.encode()),
-                timeout=proc_timeout,
-            )
+            assert proc.stdin is not None
+            assert proc.stdout is not None
+            await self._write_line(proc, "uci")
+            await self._wait_for_token(proc, "uciok", timeout=10)
+            for line in setoption_lines:
+                await self._write_line(proc, line)
+            await self._write_line(proc, "isready")
+            await self._wait_for_token(proc, "readyok", timeout=10)
+            await self._write_line(proc, "ucinewgame")
+            await self._write_line(proc, "isready")
+            await self._wait_for_token(proc, "readyok", timeout=10)
+            await self._write_line(proc, f"position fen {fen}")
+            await self._write_line(proc, go_cmd)
+            best_move = await self._wait_for_bestmove(proc, legal_moves, timeout=proc_timeout)
+            await self._write_line(proc, "quit")
+            await proc.communicate()
         except asyncio.TimeoutError:
             proc.kill()
             await proc.communicate()
@@ -157,35 +159,51 @@ class PikafishEngine(ChessEngine):
             await proc.communicate()
             raise
 
-        output = stdout.decode("utf-8", errors="replace")
-        best_move = self._parse_uci_output(output, legal_moves)
-
-        if not best_move:
-            best_move = legal_moves[0]
-
         return EngineResult(best_move=best_move, depth=depth)
 
-    def _parse_uci_output(self, output: str, legal_moves: list[str]) -> str | None:
-        for line in reversed(output.splitlines()):
-            line = line.strip()
-            if line.startswith("bestmove"):
-                parts = line.split()
-                if len(parts) >= 2:
-                    move = parts[1]
-                    if move in legal_moves:
-                        return move
+    async def _write_line(self, proc: asyncio.subprocess.Process, line: str) -> None:
+        assert proc.stdin is not None
+        proc.stdin.write((line + "\n").encode("utf-8"))
+        await proc.stdin.drain()
 
-        for line in output.splitlines():
-            line = line.strip()
-            if line.startswith("info") and " pv " in line:
-                parts = line.split()
-                try:
-                    pv_idx = parts.index("pv")
-                    if pv_idx + 1 < len(parts):
-                        move = parts[pv_idx + 1]
-                        if move in legal_moves:
-                            return move
-                except ValueError:
-                    pass
+    async def _wait_for_token(self, proc: asyncio.subprocess.Process, token: str, timeout: float) -> None:
+        assert proc.stdout is not None
 
-        return None
+        async def _reader() -> None:
+            while True:
+                line = await proc.stdout.readline()
+                if not line:
+                    raise RuntimeError(f"Pikafish 未返回 {token}")
+                if line.decode("utf-8", errors="replace").strip() == token:
+                    return
+
+        await asyncio.wait_for(_reader(), timeout=timeout)
+
+    async def _wait_for_bestmove(self, proc: asyncio.subprocess.Process, legal_moves: list[str], timeout: float) -> str:
+        assert proc.stdout is not None
+
+        async def _reader() -> str:
+            fallback_move = ""
+            while True:
+                line = await proc.stdout.readline()
+                if not line:
+                    break
+                text = line.decode("utf-8", errors="replace").strip()
+                if text.startswith("info") and " pv " in text and not fallback_move:
+                    parts = text.split()
+                    try:
+                        pv_idx = parts.index("pv")
+                        if pv_idx + 1 < len(parts) and parts[pv_idx + 1] in legal_moves:
+                            fallback_move = parts[pv_idx + 1]
+                    except ValueError:
+                        pass
+                if text.startswith("bestmove"):
+                    parts = text.split()
+                    if len(parts) >= 2 and parts[1] in legal_moves:
+                        return parts[1]
+                    break
+            if fallback_move:
+                return fallback_move
+            return legal_moves[0]
+
+        return await asyncio.wait_for(_reader(), timeout=timeout)

@@ -21,6 +21,7 @@
 - HTTP 接口兼容 chess_arena 的 `/analyze` 与 `/choose-move` 路径
 - HTTP 请求兼容 `legal_moves` 和 `legalMoves` 字段，响应同时返回 `best_move` / `move`
 - chess_arena 超时取消请求时会正确结束 Pikafish 子进程，避免残留进程
+- Pikafish 调用改为真正的 UCI 交互流程：等待 `uciok` / `readyok` 后再继续，稳定性更高
 
 ## [1.0.2] - 2026-06-01
 
