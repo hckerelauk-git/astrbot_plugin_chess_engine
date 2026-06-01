@@ -304,6 +304,10 @@ class PikafishEngine(ChessEngine):
             proc.kill()
             await proc.communicate()
             raise RuntimeError("Pikafish 分析超时")
+        except asyncio.CancelledError:
+            proc.kill()
+            await proc.communicate()
+            raise
         output = stdout.decode("utf-8", errors="replace")
         for line in reversed(output.splitlines()):
             line = line.strip()
@@ -509,6 +513,7 @@ class ChessEnginePlugin(Star):
         if self._http_port > 0:
             app = web.Application()
             app.router.add_post("/analyze", self._handle_analyze)
+            app.router.add_post("/choose-move", self._handle_analyze)
             app.router.add_get("/health", self._handle_health)
             app.router.add_get("/info", self._handle_info)
             self._runner = web.AppRunner(app)
@@ -524,14 +529,14 @@ class ChessEnginePlugin(Star):
         except Exception:
             return web.json_response({"error": "invalid json"}, status=400)
         fen = str(data.get("fen") or "").strip()
-        legal_moves = data.get("legal_moves") or []
+        legal_moves = data.get("legal_moves") or data.get("legalMoves") or []
         depth = int(data.get("depth") or self._engine_depth)
         timeout_ms = int(data.get("timeout_ms") or 8000)
         if not fen or not legal_moves:
             return web.json_response({"error": "missing fen or legal_moves"}, status=400)
         try:
             result = await asyncio.wait_for(self._manager.get_current().analyze(fen, legal_moves, depth), timeout=timeout_ms / 1000)
-            return web.json_response({"best_move": result.best_move})
+            return web.json_response({"best_move": result.best_move, "move": result.best_move})
         except asyncio.TimeoutError:
             return web.json_response({"error": "engine timeout"}, status=504)
         except Exception as exc:

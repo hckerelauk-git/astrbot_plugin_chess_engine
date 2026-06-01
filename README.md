@@ -133,6 +133,7 @@ HTTP 引擎服务端口。
 3. **chess_arena 配置**：
    - `engine_mode` 选择 `custom_http`
    - `custom_engine_http_url` 填 `http://127.0.0.1:18080/analyze`
+   - 也兼容 `http://127.0.0.1:18080/choose-move`
 
 ### 接口协议
 
@@ -154,7 +155,8 @@ HTTP 引擎服务端口。
 
 ```json
 {
-    "best_move": "h2e2"
+    "best_move": "h2e2",
+    "move": "h2e2"
 }
 ```
 

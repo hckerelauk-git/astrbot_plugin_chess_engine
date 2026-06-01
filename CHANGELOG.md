@@ -18,6 +18,9 @@
 - UCI 交互加入 `ucinewgame` 清除残局信息，避免干扰搜索
 - UCI 交互加入 `isready` 同步，确保 setoption 生效后再搜索
 - `engines/` 包同步支持 UCI 选项、movetime、手动选版本辅助方法、nnue 复制与 `pikafish-*` 二进制识别
+- HTTP 接口兼容 chess_arena 的 `/analyze` 与 `/choose-move` 路径
+- HTTP 请求兼容 `legal_moves` 和 `legalMoves` 字段，响应同时返回 `best_move` / `move`
+- chess_arena 超时取消请求时会正确结束 Pikafish 子进程，避免残留进程
 
 ## [1.0.2] - 2026-06-01
 

@@ -44,3 +44,4 @@ help: |
   ### 对接 chess_arena
   1. 本插件配置 `http_port=18080`
   2. chess_arena 配置 `engine_mode=custom_http`，`custom_engine_http_url=http://127.0.0.1:18080/analyze`
+  3. 也兼容 `http://127.0.0.1:18080/choose-move` 路径，并同时返回 `best_move`/`move`

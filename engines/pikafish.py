@@ -152,6 +152,10 @@ class PikafishEngine(ChessEngine):
             proc.kill()
             await proc.communicate()
             raise
+        except asyncio.CancelledError:
+            proc.kill()
+            await proc.communicate()
+            raise
 
         output = stdout.decode("utf-8", errors="replace")
         best_move = self._parse_uci_output(output, legal_moves)
