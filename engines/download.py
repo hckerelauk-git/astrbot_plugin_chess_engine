@@ -58,7 +58,7 @@ def find_pikafish_binary() -> Path | None:
         return direct
 
     for f in bin_dir.rglob(f"pikafish*{ext}"):
-        if f.is_file():
+        if f.is_file() and f.name.lower().startswith("pikafish"):
             return f
 
     return None
@@ -118,7 +118,7 @@ def _list_all_pikafish(bin_dir: Path) -> list[Path]:
     _, ext = get_platform_info()
     candidates = []
     for f in bin_dir.rglob(f"pikafish*{ext}"):
-        if f.is_file():
+        if f.is_file() and f.name.lower().startswith("pikafish"):
             candidates.append(f)
     return candidates
 

@@ -199,7 +199,7 @@ class PikafishEngine(ChessEngine):
             if f.suffix.lower() in {".7z", ".zip", ".txt", ".md", ".log", ".nnue"}:
                 continue
             name = f.name.lower()
-            if "pikafish" not in name and "pikafish" not in "".join(part.lower() for part in f.parts):
+            if not name.startswith("pikafish"):
                 continue
             candidates.append(f)
         candidates.sort(key=lambda p: len(p.relative_to(bin_dir).parts))
