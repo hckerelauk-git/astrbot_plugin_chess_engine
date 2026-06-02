@@ -283,11 +283,13 @@ class PikafishEngine(ChessEngine):
         fen = self._normalize_fen(fen)
         setoption_lines = self._build_setoption_lines()
         configured_movetime = int(self._uci_options.get("movetime", 0))
+        configured_overhead = int(self._uci_options.get("move_overhead", 30))
         effective_timeout_ms = max(1000, int(timeout_ms)) if timeout_ms is not None else None
         if configured_movetime > 0:
             # 给 UCI 握手和返回 bestmove 预留一点空间，避免外层先超时回退随机。
             if effective_timeout_ms is not None:
-                movetime = max(200, effective_timeout_ms - 800)
+                reserve_ms = max(1200, configured_overhead + 1200)
+                movetime = max(200, effective_timeout_ms - reserve_ms)
                 movetime = min(configured_movetime, movetime)
             else:
                 movetime = configured_movetime
@@ -608,10 +610,12 @@ class ChessEnginePlugin(Star):
         if not fen or not legal_moves:
             return web.json_response({"error": "missing fen or legal_moves"}, status=400)
         try:
+            logger.info("[ChessEngine] analyze request engine=%s depth=%s timeout_ms=%s legal_moves=%s", self._manager.get_current_info().get("name"), depth, timeout_ms, len(legal_moves))
             result = await asyncio.wait_for(
                 self._manager.get_current().analyze(fen, legal_moves, depth, timeout_ms=timeout_ms),
                 timeout=(timeout_ms / 1000) + 2,
             )
+            logger.info("[ChessEngine] analyze result move=%s", result.best_move)
             return web.json_response({"best_move": result.best_move, "move": result.best_move})
         except asyncio.TimeoutError:
             return web.json_response({"error": "engine timeout"}, status=504)

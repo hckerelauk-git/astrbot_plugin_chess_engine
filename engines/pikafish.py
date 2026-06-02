@@ -131,10 +131,12 @@ class PikafishEngine(ChessEngine):
     ) -> EngineResult:
         setoption_lines = self._build_setoption_lines()
         configured_movetime = int(self._uci_options.get("movetime", 0))
+        configured_overhead = int(self._uci_options.get("move_overhead", 30))
         effective_timeout_ms = max(1000, int(timeout_ms)) if timeout_ms is not None else None
         if configured_movetime > 0:
             if effective_timeout_ms is not None:
-                movetime = max(200, effective_timeout_ms - 800)
+                reserve_ms = max(1200, configured_overhead + 1200)
+                movetime = max(200, effective_timeout_ms - reserve_ms)
                 movetime = min(configured_movetime, movetime)
             else:
                 movetime = configured_movetime
