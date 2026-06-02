@@ -15,7 +15,11 @@ from pathlib import Path
 
 import aiohttp
 from aiohttp import web
-from astrbot.api import logger
+try:
+    from astrbot.api import logger
+except Exception:  # noqa: BLE001 - 兼容包加载阶段 astrbot 尚未完全就绪
+    import logging
+    logger = logging.getLogger("astrbot_plugin_chess_engine")
 from astrbot.api.event import AstrMessageEvent, filter
 from astrbot.api.star import Context, Star
 

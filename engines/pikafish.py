@@ -1,8 +1,13 @@
 import asyncio
+import logging
 import shutil
 from pathlib import Path
 
-from astrbot.api import logger
+try:
+    from astrbot.api import logger  # type: ignore
+except Exception:  # noqa: BLE001 - 在包加载阶段 astrbot.api 可能尚未就绪
+    logger = logging.getLogger("astrbot_plugin_chess_engine.pikafish")
+
 from engines.base import ChessEngine, EngineResult
 from engines.download import find_pikafish_binary, download_pikafish, get_pikafish_dir
 
