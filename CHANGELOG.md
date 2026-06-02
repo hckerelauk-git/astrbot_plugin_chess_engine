@@ -25,6 +25,8 @@
 - Pikafish 兼容 chess_arena/Arena 下发的 `r/b` 行棋方 FEN，自动转换为 `w/b`
 - 修复 `timeout_ms` 与 `pikafish_movetime` 冲突时容易超时回退随机走法的问题
 - 修复 FEN 规范化误把非 `r` 的行棋方一律改成 `b` 的问题
+- 修复 Pikafish 已经算出走法后，`quit` 收尾阶段连接断开却被错误上抛成 HTTP 500 的问题
+- 修复 `engines/pikafish.py` 内部调用漏传 `timeout_ms` 的问题
 
 ## [1.0.2] - 2026-06-01
 

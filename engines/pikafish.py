@@ -120,14 +120,14 @@ class PikafishEngine(ChessEngine):
         fen = self._normalize_fen(fen)
 
         try:
-            return await self._run_engine(binary, fen, legal_moves, depth)
+            return await self._run_engine(binary, fen, legal_moves, depth, timeout_ms)
         except asyncio.TimeoutError:
             raise RuntimeError("Pikafish 分析超时")
         except Exception as e:
             raise RuntimeError(f"Pikafish 分析失败: {e}")
 
     async def _run_engine(
-        self, binary: Path, fen: str, legal_moves: list[str], depth: int
+        self, binary: Path, fen: str, legal_moves: list[str], depth: int, timeout_ms: int | None = None
     ) -> EngineResult:
         setoption_lines = self._build_setoption_lines()
         configured_movetime = int(self._uci_options.get("movetime", 0))
@@ -152,6 +152,7 @@ class PikafishEngine(ChessEngine):
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
+        best_move = ""
 
         try:
             assert proc.stdin is not None
@@ -168,8 +169,6 @@ class PikafishEngine(ChessEngine):
             await self._write_line(proc, f"position fen {fen}")
             await self._write_line(proc, go_cmd)
             best_move = await self._wait_for_bestmove(proc, legal_moves, timeout=proc_timeout)
-            await self._write_line(proc, "quit")
-            await proc.communicate()
         except asyncio.TimeoutError:
             proc.kill()
             await proc.communicate()
@@ -178,8 +177,25 @@ class PikafishEngine(ChessEngine):
             proc.kill()
             await proc.communicate()
             raise
+        finally:
+            await self._shutdown_proc(proc)
 
         return EngineResult(best_move=best_move, depth=depth)
+
+    async def _shutdown_proc(self, proc: asyncio.subprocess.Process) -> None:
+        try:
+            if proc.returncode is None:
+                try:
+                    await self._write_line(proc, "quit")
+                except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError, OSError):
+                    pass
+                try:
+                    await asyncio.wait_for(proc.communicate(), timeout=2)
+                except (asyncio.TimeoutError, BrokenPipeError, ConnectionResetError, ConnectionAbortedError, OSError):
+                    proc.kill()
+                    await proc.communicate()
+        except ProcessLookupError:
+            pass
 
     async def _write_line(self, proc: asyncio.subprocess.Process, line: str) -> None:
         assert proc.stdin is not None
