@@ -300,16 +300,6 @@ class PikafishEngine(ChessEngine):
             go_cmd = f"go depth {depth}"
             proc_timeout = max(2.0, (effective_timeout_ms / 1000) if effective_timeout_ms is not None else 120.0)
 
-        uci_commands = ["uci"] + setoption_lines + [
-            "isready",
-            "ucinewgame",
-            "isready",
-            f"position fen {fen}",
-            go_cmd,
-            "quit",
-        ]
-        input_data = "\n".join(uci_commands) + "\n"
-
         proc = await asyncio.create_subprocess_exec(
             str(binary),
             stdin=asyncio.subprocess.PIPE,
