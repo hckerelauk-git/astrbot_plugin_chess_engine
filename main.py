@@ -10,6 +10,7 @@ import sys
 import zipfile
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+import time
 from pathlib import Path
 
 import aiohttp
@@ -553,6 +554,8 @@ class EngineManager:
 
 
 class ChessEnginePlugin(Star):
+    PROTOCOL_NAME = "xiangqi-engine-v1"
+
     def __init__(self, context: Context, config: dict | None = None):
         super().__init__(context)
         self.config = config or {}
@@ -599,10 +602,12 @@ class ChessEnginePlugin(Star):
             logger.info("[ChessEngine] HTTP 引擎服务已启动: %s", self._http_url)
 
     async def _handle_analyze(self, request: web.Request) -> web.Response:
+        started_at = time.perf_counter()
         try:
             data = await request.json()
         except Exception:
             return web.json_response({"error": "invalid json"}, status=400)
+        request_id = str(data.get("request_id") or "").strip() or None
         fen = str(data.get("fen") or "").strip()
         legal_moves = data.get("legal_moves") or data.get("legalMoves") or []
         depth = int(data.get("depth") or self._engine_depth)
@@ -610,13 +615,25 @@ class ChessEnginePlugin(Star):
         if not fen or not legal_moves:
             return web.json_response({"error": "missing fen or legal_moves"}, status=400)
         try:
-            logger.info("[ChessEngine] analyze request engine=%s depth=%s timeout_ms=%s legal_moves=%s", self._manager.get_current_info().get("name"), depth, timeout_ms, len(legal_moves))
+            engine_info = self._manager.get_current_info()
+            logger.info("[ChessEngine] analyze request request_id=%s engine=%s depth=%s timeout_ms=%s legal_moves=%s", request_id, engine_info.get("name"), depth, timeout_ms, len(legal_moves))
             result = await asyncio.wait_for(
                 self._manager.get_current().analyze(fen, legal_moves, depth, timeout_ms=timeout_ms),
                 timeout=(timeout_ms / 1000) + 2,
             )
-            logger.info("[ChessEngine] analyze result move=%s", result.best_move)
-            return web.json_response({"best_move": result.best_move, "move": result.best_move})
+            elapsed_ms = int((time.perf_counter() - started_at) * 1000)
+            logger.info("[ChessEngine] analyze result request_id=%s move=%s elapsed_ms=%s", request_id, result.best_move, elapsed_ms)
+            return web.json_response({
+                "protocol": self.PROTOCOL_NAME,
+                "request_id": request_id,
+                "engine": engine_info.get("name"),
+                "engine_version": engine_info.get("version"),
+                "best_move": result.best_move,
+                "move": result.best_move,
+                "depth": result.depth,
+                "score": result.score,
+                "elapsed_ms": elapsed_ms,
+            })
         except asyncio.TimeoutError:
             return web.json_response({"error": "engine timeout"}, status=504)
         except Exception as exc:
