@@ -1,6 +1,6 @@
 # 更新日志
 
-## [1.14] - 2026-06-01
+## [1.45] - 2026-06-01
 
 ### 新增
 - Pikafish 引擎支持 UCI 选项配置：Threads、Hash、Move Overhead、Ponder、MultiPV
