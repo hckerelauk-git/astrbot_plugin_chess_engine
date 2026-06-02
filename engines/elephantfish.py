@@ -1,11 +1,15 @@
 import asyncio
 import importlib.util
+import logging
 import shutil
 import sys
 import time
 from pathlib import Path
 
-from astrbot.api import logger
+try:
+    from astrbot.api import logger  # type: ignore
+except Exception:  # noqa: BLE001 - 兼容子包加载阶段 astrbot.api 尚未就绪
+    logger = logging.getLogger("astrbot_plugin_chess_engine.elephantfish")
 
 from engines.base import ChessEngine, EngineResult
 from engines.download import (

@@ -27,6 +27,9 @@ from engines.elephantfish import ElephantfishEngine
 from engines.random_engine import RandomEngine
 from engines.xqwlight import XqwlightEngine
 
+# 触发 engines 子包 import（__init__.py 为空，仅完成包初始化，不加载子模块）
+import engines  # noqa: F401 - 预热子包，避免子模块 import 失败时 main.py 仍被加载
+
 
 @dataclass
 class EngineResult:

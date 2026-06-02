@@ -1,4 +1,9 @@
-from astrbot.api import logger
+import logging
+
+try:
+    from astrbot.api import logger  # type: ignore
+except Exception:  # noqa: BLE001 - 兼容子包加载阶段 astrbot.api 尚未就绪
+    logger = logging.getLogger("astrbot_plugin_chess_engine.manager")
 
 from engines.base import ChessEngine
 from engines.elephantfish import ElephantfishEngine
