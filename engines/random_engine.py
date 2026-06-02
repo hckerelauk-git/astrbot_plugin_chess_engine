@@ -4,7 +4,16 @@ from engines.base import ChessEngine, EngineResult
 
 
 class RandomEngine(ChessEngine):
-    """随机引擎 - 从合法走法中随机选择，用于测试"""
+    """随机引擎 - 从合法走法中随机选择，用于测试。"""
+
+    def __init__(self, options: dict | None = None):
+        self._options = options or {}
+
+    def set_options(self, options: dict) -> None:
+        self._options = options or {}
+
+    def get_options(self) -> dict:
+        return dict(self._options)
 
     def get_name(self) -> str:
         return "random"
@@ -24,5 +33,11 @@ class RandomEngine(ChessEngine):
     async def analyze(self, fen: str, legal_moves: list[str], depth: int = 4, timeout_ms: int | None = None) -> EngineResult:
         if not legal_moves:
             raise RuntimeError("无合法走法可选")
-        move = random.choice(legal_moves)
+        pool = list(legal_moves)
+        seed = self._options.get("seed")
+        if seed is not None:
+            rng = random.Random(seed)
+            move = rng.choice(pool)
+        else:
+            move = random.choice(pool)
         return EngineResult(best_move=move, depth=depth)

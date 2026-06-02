@@ -1,5 +1,26 @@
 # 更新日志
 
+## [1.46] - 2026-06-01
+
+### 修复
+- 修复 Pikafish 在 chess_arena 给 40s 预算时仍被截到 7.2s 思考导致中盘回退随机的 bug；现在 `movetime` 直接对齐 `timeout_ms`，最多只扣 0.8s 给握手和返回
+- 修复 elephantfish 引擎无法安装的 bug（实际仓库是 `bupticybee/elephantfish`，从未发布到 PyPI），改为从 GitHub 自动克隆
+- 修复 elephantfish FEN 解析失败导致 `RuntimeError` 的问题，改用 `tools.parseFEN` 正确转换
+
+### 新增
+- elephantfish 引擎真正接入：使用仓库里的 `elephantfish.py` + `tools.py` 模块，调用 MTD 搜索 + UCCI 走法转换 + 合法性校验
+- 每个引擎独立功能库：`pikafish_*`、`xqwlight_*`、`elephantfish_*`、`random_*` 各自独立配置，互不干扰
+- `elephantfish_*` 选项：movetime、max_depth、skill_level、use_opening_book
+- `xqwlight_timeout` 选项：自定义平台 HTTP 请求超时
+- `random_seed` 选项：可固定随机引擎结果
+- 动态管理命令 `重装象棋引擎 <名称>`、`设置引擎选项 <引擎> <key> <value>`、`查看引擎选项 <引擎>`，不重启即可生效
+- `象棋引擎状态` 实时显示当前引擎的生效选项
+- HTTP 响应里追加 `engine` 字段，方便调试当前在用哪个引擎
+
+### 优化
+- `EngineManager` 接受每引擎独立的 `engine_options` 字典而不是只支持 Pikafish
+- 公共基类 `ChessEngine` 暴露 `set_options/get_options`，所有引擎统一接口
+
 ## [1.45] - 2026-06-01
 
 ### 新增

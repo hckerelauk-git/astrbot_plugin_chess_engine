@@ -1,116 +1,180 @@
-import random
-import subprocess
+import asyncio
+import importlib.util
+import shutil
 import sys
+import time
+from pathlib import Path
+
+from astrbot.api import logger
 
 from engines.base import ChessEngine, EngineResult
+from engines.download import (
+    ensure_elephantfish_repo,
+    get_elephantfish_dir,
+    get_elephantfish_module_path,
+)
+
+
+_ELEPHANTFISH_REPO = "bupticybee/elephantfish"
+_ELEPHANTFISH_REPO_URL = f"https://github.com/{_ELEPHANTFISH_REPO}.git"
+
+
+def _to_legal_moves_set(legal_moves) -> set[str]:
+    return {str(m).strip().lower() for m in (legal_moves or []) if str(m).strip()}
 
 
 class ElephantfishEngine(ChessEngine):
-    """elephantfish 引擎 - 轻量级 Python 象棋引擎"""
+    """elephantfish 引擎 - 124行纯Python中国象棋引擎 (bupticybee/elephantfish)"""
 
-    def __init__(self):
-        self._available = None
+    DEFAULT_THINK_TIME = 5.0
+    MAX_THINK_TIME = 30.0
+    DEFAULT_MAX_DEPTH = 6
 
-    def _check_available(self) -> bool:
-        if self._available is not None:
-            return self._available
-        try:
-            import elephantfish
-            self._available = True
-            return True
-        except ImportError:
-            self._available = False
-            return False
+    def __init__(self, options: dict | None = None):
+        self._options = options or {}
+        self._module = None
+        self._last_install_state: bool = False
+
+    def set_options(self, options: dict) -> None:
+        self._options = options
+
+    def get_options(self) -> dict:
+        return dict(self._options)
+
+    def _bin_dir(self) -> Path:
+        return get_elephantfish_dir()
+
+    def _module_path(self) -> Path:
+        return get_elephantfish_module_path()
+
+    def _load_module(self) -> None:
+        if self._module is not None:
+            return
+        path = self._module_path()
+        if not path.exists():
+            raise RuntimeError(
+                f"elephantfish 模块不存在: {path}，请先运行 安装象棋引擎 elephantfish"
+            )
+        spec = importlib.util.spec_from_file_location("_elephantfish_runtime", str(path))
+        if spec is None or spec.loader is None:
+            raise RuntimeError(f"无法加载 elephantfish 模块: {path}")
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[spec.name] = module
+        spec.loader.exec_module(module)
+        self._module = module
 
     def get_name(self) -> str:
         return "elephantfish"
 
     def get_version(self) -> str:
-        if self._check_available():
-            try:
-                import elephantfish
-                return getattr(elephantfish, "__version__", "installed")
-            except Exception:
-                return "installed"
+        if self._module_path().exists():
+            return "installed"
         return "not installed"
 
     def is_installed(self) -> bool:
-        return self._check_available()
+        return self._module_path().exists()
 
     async def install(self) -> bool:
-        if self.is_installed():
-            return True
         try:
-            result = subprocess.run(
-                [sys.executable, "-m", "pip", "install", "elephantfish"],
-                capture_output=True,
-                timeout=120,
-            )
-            if result.returncode == 0:
-                self._available = None
-                return self._check_available()
-            return False
-        except Exception:
+            await asyncio.to_thread(ensure_elephantfish_repo)
+            return self.is_installed()
+        except Exception as exc:
+            logger.warning("[ChessEngine] elephantfish 安装失败: %s", exc)
             return False
 
     async def uninstall(self) -> bool:
-        if not self.is_installed():
-            return True
         try:
-            result = subprocess.run(
-                [sys.executable, "-m", "pip", "uninstall", "-y", "elephantfish"],
-                capture_output=True,
-                timeout=60,
-            )
-            self._available = None
-            return result.returncode == 0
-        except Exception:
+            shutil.rmtree(self._bin_dir(), ignore_errors=True)
+            self._module = None
+            return True
+        except Exception as exc:
+            logger.warning("[ChessEngine] elephantfish 卸载失败: %s", exc)
             return False
+
+    def _think_time_seconds(self) -> float:
+        movetime_ms = int(self._options.get("movetime", int(self.DEFAULT_THINK_TIME * 1000)))
+        if movetime_ms <= 0:
+            movetime_ms = int(self.DEFAULT_THINK_TIME * 1000)
+        seconds = movetime_ms / 1000.0
+        return max(0.5, min(self.MAX_THINK_TIME, seconds))
+
+    def _max_depth(self) -> int:
+        return max(1, min(20, int(self._options.get("max_depth", self.DEFAULT_MAX_DEPTH))))
+
+    def _skill_level(self) -> int:
+        return max(1, min(10, int(self._options.get("skill_level", 5))))
+
+    def _use_book(self) -> bool:
+        return bool(self._options.get("use_opening_book", False))
 
     async def analyze(self, fen: str, legal_moves: list[str], depth: int = 4, timeout_ms: int | None = None) -> EngineResult:
         if not legal_moves:
             raise RuntimeError("无合法走法可选")
-
-        if not self._check_available():
+        if not self.is_installed():
             raise RuntimeError("elephantfish 未安装，请先运行: 安装象棋引擎 elephantfish")
+        try:
+            return await asyncio.to_thread(self._analyze_sync, fen, legal_moves, timeout_ms)
+        except Exception as exc:
+            raise RuntimeError(f"elephantfish 分析失败: {exc}")
+
+    def _analyze_sync(self, fen: str, legal_moves: list[str], timeout_ms: int | None = None) -> EngineResult:
+        self._load_module()
+        tools_path = self._bin_dir() / "tools.py"
+        if not tools_path.exists():
+            raise RuntimeError(f"elephantfish tools.py 缺失: {tools_path}")
+        spec = importlib.util.spec_from_file_location("_elephantfish_tools_runtime", str(tools_path))
+        if spec is None or spec.loader is None:
+            raise RuntimeError(f"无法加载 elephantfish tools: {tools_path}")
+        tools = importlib.util.module_from_spec(spec)
+        sys.modules[spec.name] = tools
+        spec.loader.exec_module(tools)
+
+        think_seconds = self._think_time_seconds()
+        if timeout_ms is not None:
+            think_seconds = min(think_seconds, max(0.5, timeout_ms / 1000.0 - 0.5))
+        max_depth = self._max_depth()
+        legal_set = _to_legal_moves_set(legal_moves)
+
+        start = time.perf_counter()
+        try:
+            pos = tools.parseFEN(fen)
+        except Exception as exc:
+            raise RuntimeError(f"elephantfish 解析 FEN 失败: {exc}")
+        searcher = self._module.Searcher()
+        history = (pos,)
+        try:
+            best_move, _score, reached_depth = tools.search(searcher, pos, think_seconds, history)
+        except Exception as exc:
+            raise RuntimeError(f"elephantfish 搜索失败: {exc}")
+        elapsed_ms = int((time.perf_counter() - start) * 1000)
+
+        if not best_move:
+            raise RuntimeError("elephantfish 未返回任何走法")
 
         try:
-            import elephantfish
-
-            if hasattr(elephantfish, "Board"):
-                return self._analyze_with_board(elephantfish, fen, legal_moves, depth)
-
-            return EngineResult(best_move=random.choice(legal_moves), depth=depth)
-
-        except Exception as e:
-            return EngineResult(best_move=random.choice(legal_moves), depth=depth)
-
-    def _analyze_with_board(self, module, fen: str, legal_moves: list[str], depth: int) -> EngineResult:
-        try:
-            board = module.Board(fen)
-            best_move = None
-            best_score = float("-inf")
-
-            for move_str in legal_moves:
-                try:
-                    if hasattr(board, "parse_move"):
-                        move = board.parse_move(move_str)
-                        if move:
-                            score = random.random()
-                            if score > best_score:
-                                best_score = score
-                                best_move = move_str
-                    else:
-                        score = random.random()
-                        if score > best_score:
-                            best_score = score
-                            best_move = move_str
-                except Exception:
-                    continue
-
-            if best_move:
-                return EngineResult(best_move=best_move, depth=depth)
+            uci = tools.mrender(pos, best_move)
         except Exception:
-            pass
+            uci = ""
 
-        return EngineResult(best_move=random.choice(legal_moves), depth=depth)
+        if uci and uci.lower() in legal_set:
+            return EngineResult(best_move=uci.lower(), depth=reached_depth, time_ms=elapsed_ms)
+
+        try:
+            raw_a = self._module.render(best_move[0])
+            raw_b = self._module.render(best_move[1])
+            uci_raw = (raw_a + raw_b).lower()
+        except Exception:
+            uci_raw = ""
+
+        if uci_raw and uci_raw in legal_set:
+            return EngineResult(best_move=uci_raw, depth=reached_depth, time_ms=elapsed_ms)
+
+        if reached_depth > max_depth:
+            pass
+        for candidate in (uci.lower(), uci_raw):
+            if candidate and candidate in legal_set:
+                return EngineResult(best_move=candidate, depth=reached_depth, time_ms=elapsed_ms)
+
+        raise RuntimeError(
+            f"elephantfish 返回的走法不在合法列表: {uci!r}/{uci_raw!r} legal_moves={list(legal_set)[:8]}"
+        )

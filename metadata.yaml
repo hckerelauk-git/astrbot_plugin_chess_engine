@@ -3,32 +3,41 @@ display_name: 象棋引擎插件
 short_desc: 支持 Pikafish、xqwlight、elephantfish 等多种象棋引擎，可通过聊天命令安装和切换
 desc: 提供统一的象棋引擎管理接口，支持安装/切换多种引擎（xqwlight/Pikafish/elephantfish/random），Pikafish 支持 UCI 选项配置和安装后手动选择具体系统版本，对外提供 HTTP 分析端点兼容 chess_arena 插件。
 author: 九喵
-version: v1.45
+version: v1.46
 repo: https://github.com/hckerelauk-git/astrbot_plugin_chess_engine
 help: |
-  ## 象棋引擎插件 v1.45
+  ## 象棋引擎插件 v1.46
 
   ### 聊天命令
   - `安装象棋引擎 <名称>` — 下载安装引擎（支持 pikafish、elephantfish）
   - `卸载象棋引擎 <名称>` — 卸载引擎
+  - `重装象棋引擎 <名称>` — 卸载后立刻重装
   - `切换象棋引擎 <名称>` — 切换当前引擎
-  - `象棋引擎状态` — 查看当前引擎信息
+  - `象棋引擎状态` — 查看当前引擎信息和生效选项
   - `象棋引擎列表` — 列出所有支持的引擎
   - `列出象棋引擎二进制` — 查看 Pikafish 解压后可选版本
   - `选择象棋引擎版本 <编号>` — 按编号手动选择当前系统对应版本
   - `设置象棋引擎路径 <完整路径>` — 直接指定某个可执行文件
+  - `设置引擎选项 <引擎> <key> <value>` — 运行时调整任意引擎的选项
+  - `查看引擎选项 <引擎>` — 查看某个引擎当前生效的选项
 
   ### 引擎说明
   - **xqwlight**：平台 API，零本地消耗（默认）
   - **pikafish**：最强开源引擎，支持 UCI 选项配置
-  - **elephantfish**：轻量 Python 引擎，pip install
+  - **elephantfish**：124行纯Python中国象棋引擎，从 GitHub 自动获取（bupticybee/elephantfish）
   - **random**：随机走法，测试用
+
+  ### 各引擎独立功能库
+  - `pikafish_*`：threads、hash、movetime、multipv、ponder、move_overhead
+  - `xqwlight_*`：timeout
+  - `elephantfish_*`：movetime、max_depth、skill_level、use_opening_book
+  - `random_*`：seed
 
   ### Pikafish UCI 选项（仅对 Pikafish 有效）
   - `pikafish_threads`：线程数（默认 2，推荐等于 CPU 核心数）
   - `pikafish_hash`：哈希内存 MB（默认 256，推荐 128-512）
-  - `pikafish_movetime`：每步思考时间 ms（默认 8000，设 0 用 depth 模式）
-  - `pikafish_multipv`：多 PV 数（默认 1，最大 500，推荐保持 1）
+  - `pikafish_movetime`：每步思考时间 ms（默认 8000，chess_arena 会透传 timeout_ms）
+  - `pikafish_multipv`：多 PV 数（默认 1，最大 500）
   - `pikafish_ponder`：后台思考（默认 false）
   - `pikafish_move_overhead`：通信延迟补偿 ms（默认 30）
 

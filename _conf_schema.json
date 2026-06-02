@@ -73,5 +73,49 @@
     "max": 5000,
     "description": "Pikafish Move Overhead (ms)",
     "hint": "仅对 Pikafish 有效。用于补偿通信延迟"
+  },
+  "xqwlight_timeout": {
+    "type": "int",
+    "default": 30,
+    "min": 1,
+    "max": 120,
+    "description": "xqwlight HTTP 超时（秒）",
+    "hint": "仅对 xqwlight 有效。请求平台 /api/analyze 的最长等待时间"
+  },
+  "elephantfish_movetime": {
+    "type": "int",
+    "default": 5000,
+    "min": 500,
+    "max": 30000,
+    "description": "elephantfish 每步思考时间 (ms)",
+    "hint": "仅对 elephantfish 有效。源码默认 5 秒"
+  },
+  "elephantfish_max_depth": {
+    "type": "int",
+    "default": 6,
+    "min": 1,
+    "max": 20,
+    "description": "elephantfish 最大搜索深度",
+    "hint": "仅对 elephantfish 有效。MTD 搜索最大深度"
+  },
+  "elephantfish_skill_level": {
+    "type": "int",
+    "default": 5,
+    "min": 1,
+    "max": 10,
+    "description": "elephantfish 技能等级",
+    "hint": "仅对 elephantfish 有效。值越大搜索越深越慢"
+  },
+  "elephantfish_use_opening_book": {
+    "type": "bool",
+    "default": false,
+    "description": "elephantfish 启用开局库",
+    "hint": "仅对 elephantfish 有效。elephantfish 暂无内置开局库，留作占位"
+  },
+  "random_seed": {
+    "type": "string",
+    "default": "",
+    "description": "random 引擎随机种子",
+    "hint": "仅对 random 有效。留空则每次随机；填整数可复现结果"
   }
 }

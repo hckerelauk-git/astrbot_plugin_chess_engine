@@ -19,6 +19,10 @@ from astrbot.api import logger
 from astrbot.api.event import AstrMessageEvent, filter
 from astrbot.api.star import Context, Star
 
+from engines.elephantfish import ElephantfishEngine
+from engines.random_engine import RandomEngine
+from engines.xqwlight import XqwlightEngine
+
 
 @dataclass
 class EngineResult:
@@ -131,6 +135,12 @@ class PikafishEngine(ChessEngine):
 
     def set_uci_options(self, options: dict):
         self._uci_options = options
+
+    def set_options(self, options: dict) -> None:
+        self._uci_options = options or {}
+
+    def get_options(self) -> dict:
+        return dict(self._uci_options)
 
     def _bin_dir(self) -> Path:
         if self._bin_dir_cached is None:
@@ -286,19 +296,22 @@ class PikafishEngine(ChessEngine):
         configured_movetime = int(self._uci_options.get("movetime", 0))
         configured_overhead = int(self._uci_options.get("move_overhead", 30))
         effective_timeout_ms = max(1000, int(timeout_ms)) if timeout_ms is not None else None
-        if configured_movetime > 0:
-            # 给 UCI 握手和返回 bestmove 预留一点空间，避免外层先超时回退随机。
+        if configured_movetime > 0 or effective_timeout_ms is not None:
+            # 优先按 chess_arena 的 timeout_ms 给 Pikafish 思考时间，再被配置上限封顶。
             if effective_timeout_ms is not None:
-                reserve_ms = max(1200, configured_overhead + 1200)
-                movetime = max(200, effective_timeout_ms - reserve_ms)
-                movetime = min(configured_movetime, movetime)
+                reserve_ms = max(800, configured_overhead + 800)
+                arena_movetime = max(200, effective_timeout_ms - reserve_ms)
             else:
-                movetime = configured_movetime
+                arena_movetime = configured_movetime
+            if configured_movetime > 0:
+                movetime = min(configured_movetime, arena_movetime)
+            else:
+                movetime = arena_movetime
             go_cmd = f"go movetime {movetime}"
             proc_timeout = max(2.0, (movetime / 1000) + 2.0)
         else:
             go_cmd = f"go depth {depth}"
-            proc_timeout = max(2.0, (effective_timeout_ms / 1000) if effective_timeout_ms is not None else 120.0)
+            proc_timeout = 120.0
 
         proc = await asyncio.create_subprocess_exec(
             str(binary),
@@ -459,56 +472,17 @@ class PikafishEngine(ChessEngine):
                     shutil.copy2(str(nnue_root), str(target))
 
 
-class ElephantfishEngine(ChessEngine):
-    def __init__(self):
-        self._available = None
-
-    def _check_available(self) -> bool:
-        if self._available is not None:
-            return self._available
-        try:
-            import elephantfish  # noqa: F401
-            self._available = True
-        except ImportError:
-            self._available = False
-        return self._available
-
-    def get_name(self) -> str:
-        return "elephantfish"
-
-    def get_version(self) -> str:
-        return "installed" if self._check_available() else "not installed"
-
-    def is_installed(self) -> bool:
-        return self._check_available()
-
-    async def install(self) -> bool:
-        if self.is_installed():
-            return True
-        result = subprocess.run([sys.executable, "-m", "pip", "install", "elephantfish"], capture_output=True, timeout=120)
-        self._available = None
-        return result.returncode == 0 and self._check_available()
-
-    async def uninstall(self) -> bool:
-        if not self.is_installed():
-            return True
-        result = subprocess.run([sys.executable, "-m", "pip", "uninstall", "-y", "elephantfish"], capture_output=True, timeout=60)
-        self._available = None
-        return result.returncode == 0
-
-    async def analyze(self, fen: str, legal_moves: list[str], depth: int = 4, timeout_ms: int | None = None) -> EngineResult:
-        if not legal_moves:
-            raise RuntimeError("无合法走法可选")
-        return EngineResult(best_move=random.choice(legal_moves), depth=depth)
-
-
 class EngineManager:
-    def __init__(self, arena_base: str = "", token: str = "", pikafish_path: str = "", pikafish_uci_options: dict | None = None):
+    def __init__(self, arena_base: str = "", token: str = "", pikafish_path: str = "", engine_options: dict | None = None, pikafish_uci_options: dict | None = None):
+        self._engine_options: dict[str, dict] = dict(engine_options or {})
+        if pikafish_uci_options and not self._engine_options.get("pikafish"):
+            self._engine_options["pikafish"] = dict(pikafish_uci_options)
+
         self._engines: dict[str, ChessEngine] = {
-            "xqwlight": XqwlightEngine(arena_base, token),
-            "pikafish": PikafishEngine(pikafish_path, pikafish_uci_options or {}),
-            "elephantfish": ElephantfishEngine(),
-            "random": RandomEngine(),
+            "xqwlight": XqwlightEngine(arena_base, token, options=self._engine_options.get("xqwlight", {})),
+            "pikafish": PikafishEngine(pikafish_path, self._engine_options.get("pikafish", {})),
+            "elephantfish": ElephantfishEngine(options=self._engine_options.get("elephantfish", {})),
+            "random": RandomEngine(options=self._engine_options.get("random", {})),
         }
         self._current_name = "xqwlight"
 
@@ -521,6 +495,21 @@ class EngineManager:
     def set_pikafish_uci_options(self, options: dict):
         engine = self._engines["pikafish"]
         engine.set_uci_options(options)
+        self._engine_options["pikafish"] = dict(options or {})
+
+    def set_engine_options(self, name: str, options: dict) -> bool:
+        if name not in self._engines:
+            return False
+        self._engine_options[name] = dict(options or {})
+        engine = self._engines[name]
+        if name == "pikafish":
+            engine.set_uci_options(options or {})
+        elif hasattr(engine, "set_options"):
+            engine.set_options(options or {})
+        return True
+
+    def get_engine_options(self, name: str) -> dict:
+        return dict(self._engine_options.get(name, {}))
 
     def list_pikafish_binaries(self) -> list[str]:
         engine = self._engines["pikafish"]
@@ -546,6 +535,7 @@ class EngineManager:
                 "version": engine.get_version(),
                 "installed": engine.is_installed(),
                 "current": name == self._current_name,
+                "options": self._engine_options.get(name, {}),
             })
         return result
 
@@ -556,6 +546,7 @@ class EngineManager:
             "version": engine.get_version(),
             "installed": engine.is_installed(),
             "current": True,
+            "options": self._engine_options.get(engine.get_name(), {}),
         }
 
 
@@ -572,16 +563,35 @@ class ChessEnginePlugin(Star):
         self._pikafish_path = str(self.config.get("pikafish_path") or "").strip()
         self._http_port = int(self.config.get("http_port") or 0)
 
-        pikafish_uci_options = {
-            "threads": int(self.config.get("pikafish_threads") or 2),
-            "hash": int(self.config.get("pikafish_hash") or 256),
-            "movetime": int(self.config.get("pikafish_movetime") or 8000),
-            "multipv": int(self.config.get("pikafish_multipv") or 1),
-            "ponder": bool(self.config.get("pikafish_ponder") or False),
-            "move_overhead": int(self.config.get("pikafish_move_overhead") or 30),
+        engine_options = {
+            "pikafish": {
+                "threads": int(self.config.get("pikafish_threads") or 2),
+                "hash": int(self.config.get("pikafish_hash") or 256),
+                "movetime": int(self.config.get("pikafish_movetime") or 8000),
+                "multipv": int(self.config.get("pikafish_multipv") or 1),
+                "ponder": bool(self.config.get("pikafish_ponder") or False),
+                "move_overhead": int(self.config.get("pikafish_move_overhead") or 30),
+            },
+            "xqwlight": {
+                "timeout": int(self.config.get("xqwlight_timeout") or 30),
+            },
+            "elephantfish": {
+                "movetime": int(self.config.get("elephantfish_movetime") or 5000),
+                "max_depth": int(self.config.get("elephantfish_max_depth") or 6),
+                "skill_level": int(self.config.get("elephantfish_skill_level") or 5),
+                "use_opening_book": bool(self.config.get("elephantfish_use_opening_book") or False),
+            },
+            "random": {
+                "seed": self.config.get("random_seed"),
+            },
         }
 
-        self._manager = EngineManager(self._arena_base, self._token, self._pikafish_path, pikafish_uci_options)
+        self._manager = EngineManager(
+            self._arena_base,
+            self._token,
+            self._pikafish_path,
+            engine_options=engine_options,
+        )
         self._manager.set_current(self._engine_select)
 
         self._runner: web.AppRunner | None = None
@@ -733,6 +743,80 @@ class ChessEnginePlugin(Star):
         except Exception as exc:
             yield event.plain_result(f"{engine_name} 卸载异常: {exc}")
 
+    @filter.command("重装象棋引擎")
+    async def reinstall_engine(self, event: AstrMessageEvent, engine_name: str):
+        engine_name = engine_name.strip().lower()
+        engine = self._manager.get_engine(engine_name)
+        if not engine:
+            yield event.plain_result(f"未知引擎: {engine_name}")
+            return
+        try:
+            await engine.uninstall()
+            success = await asyncio.wait_for(engine.install(), timeout=300)
+            yield event.plain_result(
+                f"{engine_name} 重装{'成功' if success else '失败'}"
+            )
+        except Exception as exc:
+            yield event.plain_result(f"{engine_name} 重装异常: {exc}")
+
+    @filter.command("设置引擎选项")
+    async def set_engine_option(self, event: AstrMessageEvent, rest: str):
+        parts = rest.split(None, 2)
+        if len(parts) < 3:
+            yield event.plain_result("用法：设置引擎选项 <引擎> <key> <value>")
+            return
+        engine_name, key, raw_value = parts[0], parts[1], parts[2]
+        engine_name = engine_name.strip().lower()
+        engine = self._manager.get_engine(engine_name)
+        if not engine:
+            yield event.plain_result(f"未知引擎: {engine_name}")
+            return
+        current = dict(self._manager.get_engine_options(engine_name))
+        try:
+            if isinstance(current.get(key), bool) or raw_value.lower() in {"true", "false"}:
+                parsed: object = raw_value.lower() == "true"
+            elif isinstance(current.get(key), int):
+                parsed = int(raw_value)
+            else:
+                try:
+                    parsed = int(raw_value)
+                except ValueError:
+                    try:
+                        parsed = float(raw_value)
+                    except ValueError:
+                        parsed = raw_value
+        except Exception as exc:
+            yield event.plain_result(f"参数解析失败: {exc}")
+            return
+        current[key] = parsed
+        if not self._manager.set_engine_options(engine_name, current):
+            yield event.plain_result(f"未知引擎: {engine_name}")
+            return
+        self.config.setdefault("engine_options_runtime", {}).setdefault(engine_name, {})
+        self.config["engine_options_runtime"][engine_name][key] = parsed
+        yield event.plain_result(
+            f"{engine_name}.{key} = {parsed}（运行时生效，已记忆）"
+        )
+
+    @filter.command("查看引擎选项")
+    async def view_engine_options(self, event: AstrMessageEvent, engine_name: str):
+        engine_name = engine_name.strip().lower()
+        if not engine_name:
+            yield event.plain_result("用法：查看引擎选项 <引擎>")
+            return
+        engine = self._manager.get_engine(engine_name)
+        if not engine:
+            yield event.plain_result(f"未知引擎: {engine_name}")
+            return
+        options = self._manager.get_engine_options(engine_name)
+        lines = [f"{engine_name} 当前选项:"]
+        if not options:
+            lines.append("  (无)")
+        else:
+            for key, value in options.items():
+                lines.append(f"  {key} = {value}")
+        yield event.plain_result("\n".join(lines))
+
     @filter.command("设置象棋引擎路径")
     async def set_engine_path(self, event: AstrMessageEvent, path: str):
         if not path:
@@ -812,6 +896,11 @@ class ChessEnginePlugin(Star):
             f"搜索深度: {info['depth']}\n"
             f"已安装: {'是' if info['installed'] else '否'}"
         )
+        options = self._manager.get_engine_options(info["name"])
+        if options:
+            msg += "\n选项:"
+            for key, value in options.items():
+                msg += f"\n  {key} = {value}"
         if self._http_url:
             msg += f"\nHTTP 端点: {self._http_url}/analyze"
             msg += f"\nchess_arena 配置: custom_engine_http_url = {self._http_url}/analyze"

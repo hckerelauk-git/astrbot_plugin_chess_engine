@@ -190,3 +190,98 @@ def _extract_zip(archive_path: Path, dest_dir: Path):
     import zipfile
     with zipfile.ZipFile(archive_path, "r") as zf:
         zf.extractall(dest_dir)
+
+
+ELEPHANTFISH_REPO = "bupticybee/elephantfish"
+ELEPHANTFISH_REPO_URL = f"https://github.com/{ELEPHANTFISH_REPO}.git"
+ELEPHANTFISH_BRANCH = "master"
+
+
+def _runtime_base_dir() -> Path:
+    plugin_dir = Path(__file__).resolve().parent.parent
+    if plugin_dir.parent.name.lower() == "plugins":
+        return plugin_dir.parent.parent / "plugin_storage" / plugin_dir.name
+    return plugin_dir / ".runtime"
+
+
+def get_elephantfish_dir() -> Path:
+    base = _runtime_base_dir() / "elephantfish"
+    base.mkdir(parents=True, exist_ok=True)
+    return base
+
+
+def get_elephantfish_module_path() -> Path:
+    return get_elephantfish_dir() / "elephantfish.py"
+
+
+def _git_clone(url: str, dest: Path) -> None:
+    if shutil.which("git") is None:
+        raise RuntimeError("未检测到 git 命令，请先安装 git")
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    if dest.exists():
+        shutil.rmtree(dest, ignore_errors=True)
+    result = subprocess.run(
+        ["git", "clone", "--depth", "1", "--branch", ELEPHANTFISH_BRANCH, url, str(dest)],
+        capture_output=True,
+        timeout=120,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"克隆 {url} 失败: {result.stderr.decode('utf-8', 'ignore')[:200]}"
+        )
+
+
+def _download_zip_fallback(url: str, dest: Path) -> None:
+    import urllib.request
+    import zipfile
+
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    zip_path = dest.with_suffix(".zip")
+    if zip_path.exists():
+        zip_path.unlink()
+    urllib.request.urlretrieve(url, str(zip_path))
+    with zipfile.ZipFile(zip_path, "r") as zf:
+        zf.extractall(dest.parent)
+    zip_path.unlink(missing_ok=True)
+
+
+def _ensure_required_files(repo_dir: Path) -> None:
+    """确保 elephantfish 所需的核心文件齐全。"""
+    required = ["elephantfish.py", "tools.py"]
+    missing = [name for name in required if not (repo_dir / name).exists()]
+    if missing:
+        raise RuntimeError(
+            f"elephantfish 仓库缺少必要文件: {', '.join(missing)}"
+        )
+
+
+def ensure_elephantfish_repo() -> Path:
+    """确保 elephantfish 仓库已下载到运行时目录。"""
+    dest = get_elephantfish_dir()
+    module_path = dest / "elephantfish.py"
+    tools_path = dest / "tools.py"
+    if module_path.exists() and tools_path.exists():
+        return dest
+    try:
+        _git_clone(ELEPHANTFISH_REPO_URL, dest)
+    except Exception as git_exc:
+        try:
+            fallback_url = f"https://codeload.github.com/{ELEPHANTFISH_REPO}/zip/refs/heads/{ELEPHANTFISH_BRANCH}"
+            _download_zip_fallback(fallback_url, dest)
+        except Exception as zip_exc:
+            raise RuntimeError(
+                f"克隆 elephantfish 仓库失败（git: {git_exc}; zip: {zip_exc}）"
+            ) from zip_exc
+    if not (dest / "elephantfish.py").exists():
+        nested = None
+        for child in dest.iterdir():
+            if child.is_dir() and (child / "elephantfish.py").exists():
+                nested = child
+                break
+        if nested is not None:
+            for item in nested.iterdir():
+                shutil.move(str(item), str(dest / item.name))
+            shutil.rmtree(nested, ignore_errors=True)
+    _ensure_required_files(dest)
+    return dest
+

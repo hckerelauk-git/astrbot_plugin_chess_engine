@@ -133,18 +133,21 @@ class PikafishEngine(ChessEngine):
         configured_movetime = int(self._uci_options.get("movetime", 0))
         configured_overhead = int(self._uci_options.get("move_overhead", 30))
         effective_timeout_ms = max(1000, int(timeout_ms)) if timeout_ms is not None else None
-        if configured_movetime > 0:
+        if configured_movetime > 0 or effective_timeout_ms is not None:
             if effective_timeout_ms is not None:
-                reserve_ms = max(1200, configured_overhead + 1200)
-                movetime = max(200, effective_timeout_ms - reserve_ms)
-                movetime = min(configured_movetime, movetime)
+                reserve_ms = max(800, configured_overhead + 800)
+                arena_movetime = max(200, effective_timeout_ms - reserve_ms)
             else:
-                movetime = configured_movetime
+                arena_movetime = configured_movetime
+            if configured_movetime > 0:
+                movetime = min(configured_movetime, arena_movetime)
+            else:
+                movetime = arena_movetime
             go_cmd = f"go movetime {movetime}"
             proc_timeout = max(2.0, (movetime / 1000) + 2.0)
         else:
             go_cmd = f"go depth {depth}"
-            proc_timeout = max(2.0, (effective_timeout_ms / 1000) if effective_timeout_ms is not None else 120.0)
+            proc_timeout = 120.0
 
         proc = await asyncio.create_subprocess_exec(
             str(binary),
