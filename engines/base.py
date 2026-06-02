@@ -40,6 +40,6 @@ class ChessEngine(ABC):
         pass
 
     @abstractmethod
-    async def analyze(self, fen: str, legal_moves: list[str], depth: int = 4) -> EngineResult:
+    async def analyze(self, fen: str, legal_moves: list[str], depth: int = 4, timeout_ms: int | None = None) -> EngineResult:
         """分析局面，从 legal_moves 中选择最佳走法"""
         pass

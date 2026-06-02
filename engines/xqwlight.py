@@ -30,7 +30,7 @@ class XqwlightEngine(ChessEngine):
     async def uninstall(self) -> bool:
         return True
 
-    async def analyze(self, fen: str, legal_moves: list[str], depth: int = 4) -> EngineResult:
+    async def analyze(self, fen: str, legal_moves: list[str], depth: int = 4, timeout_ms: int | None = None) -> EngineResult:
         if not legal_moves:
             raise RuntimeError("无合法走法可选")
 

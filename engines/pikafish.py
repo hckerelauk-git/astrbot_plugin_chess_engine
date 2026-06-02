@@ -71,7 +71,10 @@ class PikafishEngine(ChessEngine):
     def _normalize_fen(self, fen: str) -> str:
         parts = str(fen or "").strip().split()
         if len(parts) >= 2:
-            parts[1] = "w" if parts[1] == "r" else "b"
+            if parts[1] == "r":
+                parts[1] = "w"
+            elif parts[1] == "b":
+                parts[1] = "b"
         return " ".join(parts)
 
     def get_name(self) -> str:
@@ -106,7 +109,7 @@ class PikafishEngine(ChessEngine):
         except Exception:
             return False
 
-    async def analyze(self, fen: str, legal_moves: list[str], depth: int = 4) -> EngineResult:
+    async def analyze(self, fen: str, legal_moves: list[str], depth: int = 4, timeout_ms: int | None = None) -> EngineResult:
         if not legal_moves:
             raise RuntimeError("无合法走法可选")
 
@@ -127,13 +130,19 @@ class PikafishEngine(ChessEngine):
         self, binary: Path, fen: str, legal_moves: list[str], depth: int
     ) -> EngineResult:
         setoption_lines = self._build_setoption_lines()
-        movetime = int(self._uci_options.get("movetime", 0))
-        if movetime > 0:
+        configured_movetime = int(self._uci_options.get("movetime", 0))
+        effective_timeout_ms = max(1000, int(timeout_ms)) if timeout_ms is not None else None
+        if configured_movetime > 0:
+            if effective_timeout_ms is not None:
+                movetime = max(200, effective_timeout_ms - 800)
+                movetime = min(configured_movetime, movetime)
+            else:
+                movetime = configured_movetime
             go_cmd = f"go movetime {movetime}"
-            proc_timeout = (movetime / 1000) + 30
+            proc_timeout = max(2.0, (movetime / 1000) + 2.0)
         else:
             go_cmd = f"go depth {depth}"
-            proc_timeout = 120
+            proc_timeout = max(2.0, (effective_timeout_ms / 1000) if effective_timeout_ms is not None else 120.0)
 
         proc = await asyncio.create_subprocess_exec(
             str(binary),
