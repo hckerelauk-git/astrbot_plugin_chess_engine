@@ -22,6 +22,23 @@ from engines.download import (
 _ELEPHANTFISH_REPO = "bupticybee/elephantfish"
 _ELEPHANTFISH_REPO_URL = f"https://github.com/{_ELEPHANTFISH_REPO}.git"
 
+_FEN_BOARD_TRANSLATION = str.maketrans({
+    "H": "N",  # horse -> knight
+    "h": "n",
+    "E": "B",  # elephant -> bishop
+    "e": "b",
+    "G": "A",  # guard -> advisor
+    "g": "a",
+})
+
+_FEN_SIDE_ALIASES = {
+    "r": "w",
+    "red": "w",
+    "w": "w",
+    "b": "b",
+    "black": "b",
+}
+
 
 def _to_legal_moves_set(legal_moves) -> set[str]:
     return {str(m).strip().lower() for m in (legal_moves or []) if str(m).strip()}
@@ -31,15 +48,9 @@ def _normalize_fen_for_elephantfish(fen: str) -> str:
     parts = str(fen or "").strip().split()
     if not parts:
         return fen
-    # chess_arena may use H/h for horses and E/e for elephants;
-    # elephantfish follows N/n and B/b in FEN.
-    parts[0] = (
-        parts[0]
-        .replace("H", "N")
-        .replace("h", "n")
-        .replace("E", "B")
-        .replace("e", "b")
-    )
+    parts[0] = parts[0].translate(_FEN_BOARD_TRANSLATION)
+    if len(parts) >= 2:
+        parts[1] = _FEN_SIDE_ALIASES.get(parts[1].lower(), parts[1])
     return " ".join(parts)
 
 
