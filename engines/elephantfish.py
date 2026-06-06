@@ -67,6 +67,30 @@ def _as_bool(value, default: bool = False) -> bool:
     return default
 
 
+def _rotate_uci(move: str) -> str:
+    if len(move) < 4:
+        return move
+    files = "abcdefghi"
+    try:
+        src_file = files.index(move[0])
+        dst_file = files.index(move[2])
+        src_rank = int(move[1])
+        dst_rank = int(move[3])
+    except (ValueError, IndexError):
+        return move
+    if not (0 <= src_rank <= 9 and 0 <= dst_rank <= 9):
+        return move
+    return f"{files[8 - src_file]}{9 - src_rank}{files[8 - dst_file]}{9 - dst_rank}"
+
+
+def _move_candidates(move: str) -> list[str]:
+    normalized = str(move or "").strip().lower()
+    if not normalized:
+        return []
+    rotated = _rotate_uci(normalized)
+    return [normalized] if rotated == normalized else [normalized, rotated]
+
+
 class ElephantfishEngine(ChessEngine):
     """elephantfish 引擎 - 124行纯Python中国象棋引擎 (bupticybee/elephantfish)"""
 
@@ -212,8 +236,9 @@ class ElephantfishEngine(ChessEngine):
         except Exception:
             uci = ""
 
-        if uci and uci.lower() in legal_set:
-            return EngineResult(best_move=uci.lower(), depth=reached_depth, time_ms=elapsed_ms)
+        for candidate in _move_candidates(uci):
+            if candidate in legal_set:
+                return EngineResult(best_move=candidate, depth=reached_depth, time_ms=elapsed_ms)
 
         try:
             raw_a = self._module.render(best_move[0])
@@ -222,14 +247,16 @@ class ElephantfishEngine(ChessEngine):
         except Exception:
             uci_raw = ""
 
-        if uci_raw and uci_raw in legal_set:
-            return EngineResult(best_move=uci_raw, depth=reached_depth, time_ms=elapsed_ms)
+        for candidate in _move_candidates(uci_raw):
+            if candidate in legal_set:
+                return EngineResult(best_move=candidate, depth=reached_depth, time_ms=elapsed_ms)
 
         if reached_depth > max_depth:
             pass
-        for candidate in (uci.lower(), uci_raw):
-            if candidate and candidate in legal_set:
-                return EngineResult(best_move=candidate, depth=reached_depth, time_ms=elapsed_ms)
+        for move in (uci, uci_raw):
+            for candidate in _move_candidates(move):
+                if candidate in legal_set:
+                    return EngineResult(best_move=candidate, depth=reached_depth, time_ms=elapsed_ms)
 
         raise RuntimeError(
             f"elephantfish 返回的走法不在合法列表: {uci!r}/{uci_raw!r} legal_moves={list(legal_set)[:8]}"
