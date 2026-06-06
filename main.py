@@ -13,6 +13,10 @@ from dataclasses import dataclass
 import time
 from pathlib import Path
 
+PLUGIN_DIR = Path(__file__).resolve().parent
+if str(PLUGIN_DIR) not in sys.path:
+    sys.path.insert(0, str(PLUGIN_DIR))
+
 import aiohttp
 from aiohttp import web
 try:
@@ -23,9 +27,12 @@ except Exception:  # noqa: BLE001 - 兼容包加载阶段 astrbot 尚未完全�
 from astrbot.api.event import AstrMessageEvent, filter
 from astrbot.api.star import Context, Star
 
-from engines.elephantfish import ElephantfishEngine
-from engines.random_engine import RandomEngine
-from engines.xqwlight import XqwlightEngine
+from engines.base import ChessEngine as PackageChessEngine
+from engines.base import EngineResult as PackageEngineResult
+from engines.elephantfish import ElephantfishEngine as PackageElephantfishEngine
+from engines.pikafish import PikafishEngine as PackagePikafishEngine
+from engines.random_engine import RandomEngine as PackageRandomEngine
+from engines.xqwlight import XqwlightEngine as PackageXqwlightEngine
 
 # 触发 engines 子包 import（__init__.py 为空，仅完成包初始化，不加载子模块）
 import engines  # noqa: F401 - 预热子包，避免子模块 import 失败时 main.py 仍被加载
@@ -479,6 +486,14 @@ class PikafishEngine(ChessEngine):
                     shutil.copy2(str(nnue_root), str(target))
 
 
+ChessEngine = PackageChessEngine
+EngineResult = PackageEngineResult
+ElephantfishEngine = PackageElephantfishEngine
+PikafishEngine = PackagePikafishEngine
+RandomEngine = PackageRandomEngine
+XqwlightEngine = PackageXqwlightEngine
+
+
 class EngineManager:
     def __init__(self, arena_base: str = "", token: str = "", pikafish_path: str = "", engine_options: dict | None = None, pikafish_uci_options: dict | None = None):
         self._engine_options: dict[str, dict] = dict(engine_options or {})
@@ -497,7 +512,9 @@ class EngineManager:
         self._engines["xqwlight"].set_arena(arena_base, token)
 
     def set_pikafish_path(self, path: str):
-        self._engines["pikafish"]._custom_path = path
+        engine = self._engines["pikafish"]
+        if hasattr(engine, "set_custom_path"):
+            engine.set_custom_path(path)
 
     def set_pikafish_uci_options(self, options: dict):
         engine = self._engines["pikafish"]
