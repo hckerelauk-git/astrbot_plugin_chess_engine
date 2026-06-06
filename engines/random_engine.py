@@ -36,7 +36,7 @@ class RandomEngine(ChessEngine):
         pool = list(legal_moves)
         seed = self._options.get("seed")
         if seed is not None:
-            rng = random.Random(seed)
+            rng = random.Random(f"{seed}:{fen}:{depth}:{len(pool)}")
             move = rng.choice(pool)
         else:
             move = random.choice(pool)
