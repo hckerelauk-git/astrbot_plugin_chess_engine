@@ -3,10 +3,10 @@ display_name: 象棋引擎插件
 short_desc: 支持 Pikafish、xqwlight、elephantfish 等多种象棋引擎，可通过聊天命令安装和切换
 desc: 提供统一的象棋引擎管理接口，支持安装/切换多种引擎（xqwlight/Pikafish/elephantfish/random），Pikafish 支持 UCI 选项配置和安装后手动选择具体系统版本，对外提供 HTTP 分析端点兼容 chess_arena 插件。
 author: 九喵
-version: v1.47
+version: v1.48
 repo: https://github.com/hckerelauk-git/astrbot_plugin_chess_engine
 help: |
-  ## 象棋引擎插件 v1.47
+  ## 象棋引擎插件 v1.48
 
   ### 聊天命令
   - `安装象棋引擎 <名称>` — 下载安装引擎（支持 pikafish、elephantfish）
@@ -27,7 +27,7 @@ help: |
   - **xqwlight**：平台 API，零本地消耗（默认）
   - **pikafish**：最强开源引擎，支持 UCI 选项配置
   - **elephantfish**：124行纯Python中国象棋引擎，从 GitHub 自动获取（bupticybee/elephantfish）
-  - **random**：随机走法，测试用
+  - **random**：随机走法，测试用；空 seed 真随机，有 seed 时按局面生成可复现走法
 
   ### 各引擎独立功能库
   - `pikafish_*`：threads、hash、movetime、multipv、ponder、move_overhead
