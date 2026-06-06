@@ -15,11 +15,12 @@ from engines.xqwlight import XqwlightEngine
 class EngineManager:
     """引擎管理器 - 管理所有可用引擎，支持每个引擎独立功能库。"""
 
-    def __init__(self, arena_base: str = "", token: str = "", engine_options: dict | None = None):
+    def __init__(self, arena_base: str = "", token: str = "", pikafish_path: str = "", engine_options: dict | None = None):
         self._engines: dict[str, ChessEngine] = {}
         self._current_name: str = "xqwlight"
         self._arena_base = arena_base
         self._token = token
+        self._pikafish_path = pikafish_path
         self._engine_options: dict[str, dict] = dict(engine_options or {})
 
         self._init_engines()
@@ -31,7 +32,7 @@ class EngineManager:
             options=self._engine_options.get("xqwlight", {}),
         )
         self._engines["pikafish"] = PikafishEngine(
-            "",
+            self._pikafish_path,
             uci_options=self._engine_options.get("pikafish", {}),
         )
         self._engines["elephantfish"] = ElephantfishEngine(
@@ -49,6 +50,7 @@ class EngineManager:
             engine.set_arena(arena_base, token)
 
     def set_pikafish_path(self, path: str) -> None:
+        self._pikafish_path = path
         engine = self._engines.get("pikafish")
         if engine and hasattr(engine, "set_custom_path"):
             engine.set_custom_path(path)
@@ -59,17 +61,18 @@ class EngineManager:
             engine.set_uci_options(options)
         self._engine_options.setdefault("pikafish", {}).update(options or {})
 
-    def set_engine_options(self, name: str, options: dict) -> None:
+    def set_engine_options(self, name: str, options: dict) -> bool:
         if not name or name not in self._engines:
-            return
-        self._engine_options.setdefault(name, {}).update(options or {})
+            return False
+        self._engine_options[name] = dict(options or {})
         engine = self._engines.get(name)
         if engine is None:
-            return
+            return False
         if name == "pikafish" and hasattr(engine, "set_uci_options"):
             engine.set_uci_options(options or {})
         elif hasattr(engine, "set_options"):
             engine.set_options(options or {})
+        return True
 
     def get_engine_options(self, name: str) -> dict:
         return dict(self._engine_options.get(name, {}))
