@@ -1,5 +1,21 @@
 # 更新日志
 
+## [1.47] - 2026-06-06
+
+### 修复
+- 修复 `main.py` 内部重复引擎类覆盖 `engines/` 子包实现，导致构造参数不兼容的问题
+- 修复 `EngineManager` 未正确传递 `pikafish_path`，导致手动选择的 Pikafish 路径可能失效的问题
+- 修复运行时通过 `设置引擎选项` 修改的参数重载后不再读回的问题
+- 修复切换引擎、选择 Pikafish 版本、设置 Pikafish 路径后未尝试保存配置的问题
+- 修复 `random_seed` 为空字符串时随机引擎每次都固定同一步的问题
+- 修复 `elephantfish` 动态加载时 `tools.py` 导入 `elephantfish` 模块失败的问题
+- 修复 Pikafish 解压后未手动选择二进制时可能自动误选其他平台版本的问题
+
+### 优化
+- HTTP `/analyze` 在当前引擎异常时会回退返回一个随机合法走法，避免 chess_arena 收到 HTTP 500 后中断走棋
+- `elephantfish` 加载时改用规范模块名，并注入运行时模块对象，降低动态导入冲突概率
+- README 和 metadata 同步补充 chess_arena 对接、故障回退和更新后需重启的说明
+
 ## [1.46] - 2026-06-01
 
 ### 修复
