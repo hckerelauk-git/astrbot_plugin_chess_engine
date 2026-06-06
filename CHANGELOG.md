@@ -11,6 +11,7 @@
 - 修复 `elephantfish` 动态加载时 `tools.py` 导入 `elephantfish` 模块失败的问题
 - 修复 Pikafish 解压后未手动选择二进制时可能自动误选其他平台版本的问题
 - 修复运行时设置 `maxdepth`、`skilllevel`、`useopeningbook` 后，显示旧键名且实际读取不一致的问题
+- 修复 chess_arena FEN 使用 `H/h` 表示马时，elephantfish 只能识别 `N/n` 导致解析失败的问题
 
 ### 优化
 - HTTP `/analyze` 在当前引擎异常时会回退返回一个随机合法走法，避免 chess_arena 收到 HTTP 500 后中断走棋
