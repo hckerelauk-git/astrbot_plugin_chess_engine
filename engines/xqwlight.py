@@ -78,7 +78,7 @@ class XqwlightEngine(ChessEngine):
                     raise RuntimeError(f"xqwlight 分析失败: HTTP {resp.status} {text[:200]}")
                 data = await resp.json()
 
-        best = str(data.get("best_move") or "").strip()
+        best = str(data.get("best_move") or data.get("move") or "").strip()
         if best and best in legal_moves:
             return EngineResult(best_move=best, depth=depth)
 
