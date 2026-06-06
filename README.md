@@ -5,7 +5,7 @@
 | 信息 | 内容 |
 |------|------|
 | **插件名** | astrbot_plugin_chess_engine |
-| **版本** | 1.46 |
+| **版本** | 1.47 |
 | **作者** | 九喵 |
 | **许可证** | MIT License |
 | **AstrBot 最低版本** | 4.10.0 |
@@ -16,6 +16,8 @@
 
 > **更新保留说明**：Pikafish 现在默认存放到插件外的持久目录。更新插件代码后不会再因为覆盖插件目录而丢失引擎文件；旧版本如果已经装过，会在下次启动时自动迁移。
 
+> **更新后重启说明**：如果更新了本插件的 Python 文件，请重启 AstrBot。仅重载插件可能仍使用旧模块缓存，尤其是 elephantfish 这类动态加载引擎。
+
 ---
 
 ## 功能
@@ -23,6 +25,7 @@
 - 支持 4 种象棋引擎：xqwlight、pikafish、elephantfish、random
 - 通过聊天命令安装/卸载/切换引擎
 - Pikafish 支持自动下载预编译二进制，并允许手动选择具体系统版本
+- 当前引擎异常时 HTTP 接口会回退随机合法走法，避免 chess_arena 棋局中断
 - 提供简洁的对外接口供其他插件调用
 
 ---
@@ -44,6 +47,8 @@
 | **pikafish** | 下载预编译二进制 | 最强开源引擎，基于 Stockfish |
 | **elephantfish** | GitHub 自动下载 | 124行纯Python中国象棋引擎，bupticybee/elephantfish |
 | **random** | 无需安装 | 随机走法，用于测试 |
+
+> 如果只是测试 chess_arena 对接，建议先选 `random`。确认能走棋后，再切换到 `xqwlight`、`elephantfish` 或 `pikafish`。
 
 ---
 
@@ -130,13 +135,18 @@ HTTP 引擎服务端口。
 
 ### 配置步骤
 
-1. **本插件配置**：设置 `http_port = 18080`，选择想要的引擎（如 pikafish）
-2. **Pikafish 版本选择**：安装后先执行 `列出象棋引擎二进制`，再用 `选择象棋引擎版本 <编号>` 选当前系统版本
+1. **本插件配置**：设置 `http_port = 18080`，先选择 `random` 测试连通性
+2. **状态检查**：发送 `象棋引擎状态`，确认显示 `HTTP 端点: http://127.0.0.1:18080/analyze`
+3. **Pikafish 版本选择**：如果要使用 Pikafish，安装后先执行 `列出象棋引擎二进制`，再用 `选择象棋引擎版本 <编号>` 选当前系统版本
 
-3. **chess_arena 配置**：
+4. **chess_arena 配置**：
    - `engine_mode` 选择 `custom_http`
    - `custom_engine_http_url` 填 `http://127.0.0.1:18080/analyze`
    - 也兼容 `http://127.0.0.1:18080/choose-move`
+
+### 故障回退
+
+如果当前引擎分析失败，HTTP 接口会返回一个随机合法走法，并在响应中附带 `warning` 字段。这样 chess_arena 不会因为某个引擎异常而中断棋局。日志里看到 `回退随机走法` 时，说明对接仍然可用，但当前选择的引擎需要单独排查。
 
 ### 接口协议
 
@@ -159,7 +169,8 @@ HTTP 引擎服务端口。
 ```json
 {
     "best_move": "h2e2",
-    "move": "h2e2"
+    "move": "h2e2",
+    "warning": "仅在当前引擎异常并回退时出现"
 }
 ```
 
