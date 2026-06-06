@@ -31,8 +31,15 @@ def _normalize_fen_for_elephantfish(fen: str) -> str:
     parts = str(fen or "").strip().split()
     if not parts:
         return fen
-    # chess_arena may use H/h for horses; elephantfish expects N/n.
-    parts[0] = parts[0].replace("H", "N").replace("h", "n")
+    # chess_arena may use H/h for horses and E/e for elephants;
+    # elephantfish follows N/n and B/b in FEN.
+    parts[0] = (
+        parts[0]
+        .replace("H", "N")
+        .replace("h", "n")
+        .replace("E", "B")
+        .replace("e", "b")
+    )
     return " ".join(parts)
 
 
