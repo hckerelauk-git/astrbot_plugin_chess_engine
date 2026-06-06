@@ -3,10 +3,10 @@ display_name: 象棋引擎插件
 short_desc: 支持 Pikafish、xqwlight、elephantfish 等多种象棋引擎，可通过聊天命令安装和切换
 desc: 提供统一的象棋引擎管理接口，支持安装/切换多种引擎（xqwlight/Pikafish/elephantfish/random），Pikafish 支持 UCI 选项配置和安装后手动选择具体系统版本，对外提供 HTTP 分析端点兼容 chess_arena 插件。
 author: 九喵
-version: v1.46
+version: v1.47
 repo: https://github.com/hckerelauk-git/astrbot_plugin_chess_engine
 help: |
-  ## 象棋引擎插件 v1.46
+  ## 象棋引擎插件 v1.47
 
   ### 聊天命令
   - `安装象棋引擎 <名称>` — 下载安装引擎（支持 pikafish、elephantfish）
@@ -54,3 +54,6 @@ help: |
   1. 本插件配置 `http_port=18080`
   2. chess_arena 配置 `engine_mode=custom_http`，`custom_engine_http_url=http://127.0.0.1:18080/analyze`
   3. 也兼容 `http://127.0.0.1:18080/choose-move` 路径，并同时返回 `best_move`/`move`
+
+  ### 故障回退
+  当前引擎异常时，HTTP 接口会回退返回随机合法走法，避免 chess_arena 棋局中断。更新插件代码后建议重启 AstrBot，避免旧模块缓存继续生效。
