@@ -138,10 +138,13 @@ class ElephantfishEngine(ChessEngine):
         sys.modules[spec.name] = tools
         if self._module is not None:
             sys.modules["elephantfish"] = self._module
+            tools.elephantfish = self._module
         module_dir = str(tools_path.parent)
         if module_dir not in sys.path:
             sys.path.insert(0, module_dir)
-        spec.loader.exec_module(tools)
+        source = tools_path.read_text(encoding="utf-8")
+        source = source.replace("import elephantfish", "# import elephantfish")
+        exec(compile(source, str(tools_path), "exec"), tools.__dict__)
 
         think_seconds = self._think_time_seconds()
         if timeout_ms is not None:
