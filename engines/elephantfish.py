@@ -27,6 +27,15 @@ def _to_legal_moves_set(legal_moves) -> set[str]:
     return {str(m).strip().lower() for m in (legal_moves or []) if str(m).strip()}
 
 
+def _normalize_fen_for_elephantfish(fen: str) -> str:
+    parts = str(fen or "").strip().split()
+    if not parts:
+        return fen
+    # chess_arena may use H/h for horses; elephantfish expects N/n.
+    parts[0] = parts[0].replace("H", "N").replace("h", "n")
+    return " ".join(parts)
+
+
 class ElephantfishEngine(ChessEngine):
     """elephantfish 引擎 - 124行纯Python中国象棋引擎 (bupticybee/elephantfish)"""
 
@@ -107,13 +116,16 @@ class ElephantfishEngine(ChessEngine):
         return max(0.5, min(self.MAX_THINK_TIME, seconds))
 
     def _max_depth(self) -> int:
-        return max(1, min(20, int(self._options.get("max_depth", self.DEFAULT_MAX_DEPTH))))
+        value = self._options.get("max_depth", self._options.get("maxdepth", self.DEFAULT_MAX_DEPTH))
+        return max(1, min(20, int(value)))
 
     def _skill_level(self) -> int:
-        return max(1, min(10, int(self._options.get("skill_level", 5))))
+        value = self._options.get("skill_level", self._options.get("skilllevel", 5))
+        return max(1, min(10, int(value)))
 
     def _use_book(self) -> bool:
-        return bool(self._options.get("use_opening_book", False))
+        value = self._options.get("use_opening_book", self._options.get("useopeningbook", False))
+        return bool(value)
 
     async def analyze(self, fen: str, legal_moves: list[str], depth: int = 4, timeout_ms: int | None = None) -> EngineResult:
         if not legal_moves:
@@ -150,7 +162,7 @@ class ElephantfishEngine(ChessEngine):
 
         start = time.perf_counter()
         try:
-            pos = tools.parseFEN(fen)
+            pos = tools.parseFEN(_normalize_fen_for_elephantfish(fen))
         except Exception as exc:
             raise RuntimeError(f"elephantfish 解析 FEN 失败: {exc}")
         searcher = self._module.Searcher()
