@@ -1,5 +1,5 @@
 import asyncio
-import importlib.util
+import importlib
 import logging
 import shutil
 import sys
@@ -60,16 +60,15 @@ class ElephantfishEngine(ChessEngine):
             raise RuntimeError(
                 f"elephantfish 模块不存在: {path}，请先运行 安装象棋引擎 elephantfish"
             )
-        spec = importlib.util.spec_from_file_location("elephantfish", str(path))
-        if spec is None or spec.loader is None:
-            raise RuntimeError(f"无法加载 elephantfish 模块: {path}")
-        module = importlib.util.module_from_spec(spec)
-        sys.modules[spec.name] = module
-        sys.modules["elephantfish"] = module
         module_dir = str(path.parent)
-        if module_dir not in sys.path:
-            sys.path.insert(0, module_dir)
-        spec.loader.exec_module(module)
+        if module_dir in sys.path:
+            sys.path.remove(module_dir)
+        sys.path.insert(0, module_dir)
+        stale = sys.modules.get("elephantfish")
+        stale_file = getattr(stale, "__file__", "") if stale is not None else ""
+        if stale is not None and Path(stale_file).resolve() != path.resolve():
+            sys.modules.pop("elephantfish", None)
+        module = importlib.import_module("elephantfish")
         self._module = module
 
     def get_name(self) -> str:
@@ -131,20 +130,17 @@ class ElephantfishEngine(ChessEngine):
         tools_path = self._bin_dir() / "tools.py"
         if not tools_path.exists():
             raise RuntimeError(f"elephantfish tools.py 缺失: {tools_path}")
-        spec = importlib.util.spec_from_file_location("tools", str(tools_path))
-        if spec is None or spec.loader is None:
-            raise RuntimeError(f"无法加载 elephantfish tools: {tools_path}")
-        tools = importlib.util.module_from_spec(spec)
-        sys.modules[spec.name] = tools
+        module_dir = str(tools_path.parent)
+        if module_dir in sys.path:
+            sys.path.remove(module_dir)
+        sys.path.insert(0, module_dir)
         if self._module is not None:
             sys.modules["elephantfish"] = self._module
-            tools.elephantfish = self._module
-        module_dir = str(tools_path.parent)
-        if module_dir not in sys.path:
-            sys.path.insert(0, module_dir)
-        source = tools_path.read_text(encoding="utf-8")
-        source = source.replace("import elephantfish", "# import elephantfish")
-        exec(compile(source, str(tools_path), "exec"), tools.__dict__)
+        stale_tools = sys.modules.get("tools")
+        stale_file = getattr(stale_tools, "__file__", "") if stale_tools is not None else ""
+        if stale_tools is not None and Path(stale_file).resolve() != tools_path.resolve():
+            sys.modules.pop("tools", None)
+        tools = importlib.import_module("tools")
 
         think_seconds = self._think_time_seconds()
         if timeout_ms is not None:
