@@ -5,7 +5,7 @@
 | 信息 | 内容 |
 |------|------|
 | **插件名** | astrbot_plugin_chess_engine |
-| **版本** | 1.47 |
+| **版本** | 1.48 |
 | **作者** | 九喵 |
 | **许可证** | MIT License |
 | **AstrBot 最低版本** | 4.10.0 |
@@ -26,6 +26,7 @@
 - 通过聊天命令安装/卸载/切换引擎
 - Pikafish 支持自动下载预编译二进制，并允许手动选择具体系统版本
 - 当前引擎异常时 HTTP 接口会回退随机合法走法，避免 chess_arena 棋局中断
+- 主入口仅负责 AstrBot 命令与 HTTP 接口，引擎逻辑统一由 `engines/` 子包管理
 - 提供简洁的对外接口供其他插件调用
 
 ---
@@ -68,6 +69,8 @@
 | `查看引擎选项 <引擎>` | 查看引擎当前生效选项 | `查看引擎选项 elephantfish` |
 
 > 运行时设置会自动规范化别名。例如 `设置引擎选项 elephantfish maxdepth 10` 会保存为 `max_depth = 10`，`skilllevel` 会保存为 `skill_level`，`useopeningbook` 会保存为 `use_opening_book`。
+
+> `random_seed` 为空时是真随机；填写后会按 FEN、depth 与合法走法数量生成可复现结果，不会所有局面固定同一步。
 
 ---
 
