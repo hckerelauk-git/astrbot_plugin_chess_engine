@@ -46,7 +46,7 @@
 |------|---------|------|
 | **xqwlight** | 无需安装（平台 API） | 默认引擎，调用楚河平台 API，零本地消耗 |
 | **pikafish** | 下载预编译二进制 | 最强开源引擎，基于 Stockfish |
-| **elephantfish** | GitHub 自动下载 | 124行纯Python中国象棋引擎，已兼容 chess_arena 的 H/h 马与 E/e 象棋子 FEN |
+| **elephantfish** | GitHub 自动下载 | 124行纯Python中国象棋引擎，已兼容 chess_arena 的 H/h 马、E/e 象、G/g 士和 r/red 行棋方 FEN |
 | **random** | 无需安装 | 随机走法，用于测试 |
 
 > 如果只是测试 chess_arena 对接，建议先选 `random`。确认能走棋后，再切换到 `xqwlight`、`elephantfish` 或 `pikafish`。
