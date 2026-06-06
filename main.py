@@ -577,6 +577,19 @@ class EngineManager:
 class ChessEnginePlugin(Star):
     PROTOCOL_NAME = "xiangqi-engine-v1"
 
+    ENGINE_OPTION_ALIASES = {
+        "elephantfish": {
+            "maxdepth": "max_depth",
+            "skilllevel": "skill_level",
+            "useopeningbook": "use_opening_book",
+            "move_time": "movetime",
+        },
+        "pikafish": {
+            "moveoverhead": "move_overhead",
+            "move_time": "movetime",
+        },
+    }
+
     def __init__(self, context: Context, config: dict | None = None):
         super().__init__(context)
         self.config = config or {}
@@ -611,7 +624,8 @@ class ChessEnginePlugin(Star):
         }
         for name, options in dict(self.config.get("engine_options_runtime") or {}).items():
             if isinstance(options, dict):
-                engine_options.setdefault(name, {}).update(options)
+                normalized = self._normalize_engine_options(str(name), options)
+                engine_options.setdefault(name, {}).update(normalized)
 
         self._manager = EngineManager(
             self._arena_base,
@@ -629,6 +643,17 @@ class ChessEnginePlugin(Star):
         except RuntimeError:
             self._startup_task = None
             logger.warning("[ChessEngine] 当前没有运行中的事件循环，HTTP 服务稍后不会自动启动")
+
+    def _normalize_engine_option_key(self, engine_name: str, key: str) -> str:
+        aliases = self.ENGINE_OPTION_ALIASES.get(engine_name, {})
+        normalized = key.strip().lower().replace("-", "_")
+        return aliases.get(normalized, normalized)
+
+    def _normalize_engine_options(self, engine_name: str, options: dict) -> dict:
+        return {
+            self._normalize_engine_option_key(engine_name, str(key)): value
+            for key, value in dict(options or {}).items()
+        }
 
     async def _startup(self):
         if self._http_port > 0:
@@ -808,6 +833,7 @@ class ChessEnginePlugin(Star):
             return
         engine_name, key, raw_value = parts[0], parts[1], parts[2]
         engine_name = engine_name.strip().lower()
+        key = self._normalize_engine_option_key(engine_name, key)
         engine = self._manager.get_engine(engine_name)
         if not engine:
             yield event.plain_result(f"未知引擎: {engine_name}")
