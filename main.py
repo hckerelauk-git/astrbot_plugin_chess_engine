@@ -606,9 +606,12 @@ class ChessEnginePlugin(Star):
                 "use_opening_book": bool(self.config.get("elephantfish_use_opening_book") or False),
             },
             "random": {
-                "seed": self.config.get("random_seed"),
+                "seed": self.config.get("random_seed") or None,
             },
         }
+        for name, options in dict(self.config.get("engine_options_runtime") or {}).items():
+            if isinstance(options, dict):
+                engine_options.setdefault(name, {}).update(options)
 
         self._manager = EngineManager(
             self._arena_base,
@@ -818,6 +821,9 @@ class ChessEnginePlugin(Star):
             return
         self.config.setdefault("engine_options_runtime", {}).setdefault(engine_name, {})
         self.config["engine_options_runtime"][engine_name][key] = parsed
+        save = getattr(self.config, "save_config", None)
+        if callable(save):
+            save()
         yield event.plain_result(
             f"{engine_name}.{key} = {parsed}（运行时生效，已记忆）"
         )
@@ -853,6 +859,9 @@ class ChessEnginePlugin(Star):
         self._manager.set_pikafish_path(path)
         self._pikafish_path = path
         self.config["pikafish_path"] = path
+        save = getattr(self.config, "save_config", None)
+        if callable(save):
+            save()
         yield event.plain_result(f"已设置 pikafish 路径: {path}")
 
     @filter.command("列出象棋引擎二进制")
@@ -891,6 +900,9 @@ class ChessEnginePlugin(Star):
         self._manager.set_current("pikafish")
         self._engine_select = "pikafish"
         self.config["engine_select"] = "pikafish"
+        save = getattr(self.config, "save_config", None)
+        if callable(save):
+            save()
         yield event.plain_result(f"已选择: {binary}\n已切换到 pikafish 引擎")
 
     @filter.command("切换象棋引擎")
@@ -909,6 +921,9 @@ class ChessEnginePlugin(Star):
         self._manager.set_current(engine_name)
         self._engine_select = engine_name
         self.config["engine_select"] = engine_name
+        save = getattr(self.config, "save_config", None)
+        if callable(save):
+            save()
         yield event.plain_result(f"已切换到引擎: {engine_name}")
 
     @filter.command("象棋引擎状态")
