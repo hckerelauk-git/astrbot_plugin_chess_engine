@@ -64,6 +64,7 @@ class ElephantfishEngine(ChessEngine):
             raise RuntimeError(f"无法加载 elephantfish 模块: {path}")
         module = importlib.util.module_from_spec(spec)
         sys.modules[spec.name] = module
+        sys.modules["elephantfish"] = module
         spec.loader.exec_module(module)
         self._module = module
 
@@ -131,6 +132,8 @@ class ElephantfishEngine(ChessEngine):
             raise RuntimeError(f"无法加载 elephantfish tools: {tools_path}")
         tools = importlib.util.module_from_spec(spec)
         sys.modules[spec.name] = tools
+        if self._module is not None:
+            sys.modules["elephantfish"] = self._module
         spec.loader.exec_module(tools)
 
         think_seconds = self._think_time_seconds()
