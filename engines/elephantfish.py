@@ -36,6 +36,19 @@ def _normalize_fen_for_elephantfish(fen: str) -> str:
     return " ".join(parts)
 
 
+def _as_bool(value, default: bool = False) -> bool:
+    if isinstance(value, bool):
+        return value
+    if value is None:
+        return default
+    text = str(value).strip().lower()
+    if text in {"1", "true", "yes", "on", "是", "开"}:
+        return True
+    if text in {"0", "false", "no", "off", "否", "关"}:
+        return False
+    return default
+
+
 class ElephantfishEngine(ChessEngine):
     """elephantfish 引擎 - 124行纯Python中国象棋引擎 (bupticybee/elephantfish)"""
 
@@ -125,7 +138,7 @@ class ElephantfishEngine(ChessEngine):
 
     def _use_book(self) -> bool:
         value = self._options.get("use_opening_book", self._options.get("useopeningbook", False))
-        return bool(value)
+        return _as_bool(value, False)
 
     async def analyze(self, fen: str, legal_moves: list[str], depth: int = 4, timeout_ms: int | None = None) -> EngineResult:
         if not legal_moves:
