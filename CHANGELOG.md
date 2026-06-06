@@ -15,6 +15,7 @@
 - 修复 chess_arena FEN 使用 `E/e` 表示象时，elephantfish 只能识别 `B/b` 导致解析失败的问题
 - 补全 chess_arena 到 elephantfish 的 FEN 别名映射：`H/h -> N/n`、`E/e -> B/b`、`G/g -> A/a`，并兼容 `r/red` 行棋方别名
 - 补全 chess_arena 到 Pikafish 的同一套 FEN 别名映射，避免本地 UCI 引擎收到非标准棋子字母
+- 修复 elephantfish 返回红黑视角旋转坐标时，未转换回 chess_arena 合法走法坐标导致回退随机的问题
 
 ### 文档
 - README、metadata 与更新日志同步记录 1.48 重构内容
