@@ -60,7 +60,7 @@ class ElephantfishEngine(ChessEngine):
             raise RuntimeError(
                 f"elephantfish 模块不存在: {path}，请先运行 安装象棋引擎 elephantfish"
             )
-        spec = importlib.util.spec_from_file_location("_elephantfish_runtime", str(path))
+        spec = importlib.util.spec_from_file_location("elephantfish", str(path))
         if spec is None or spec.loader is None:
             raise RuntimeError(f"无法加载 elephantfish 模块: {path}")
         module = importlib.util.module_from_spec(spec)
@@ -131,7 +131,7 @@ class ElephantfishEngine(ChessEngine):
         tools_path = self._bin_dir() / "tools.py"
         if not tools_path.exists():
             raise RuntimeError(f"elephantfish tools.py 缺失: {tools_path}")
-        spec = importlib.util.spec_from_file_location("_elephantfish_tools_runtime", str(tools_path))
+        spec = importlib.util.spec_from_file_location("tools", str(tools_path))
         if spec is None or spec.loader is None:
             raise RuntimeError(f"无法加载 elephantfish tools: {tools_path}")
         tools = importlib.util.module_from_spec(spec)
