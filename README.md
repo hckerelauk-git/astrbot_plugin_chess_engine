@@ -67,6 +67,8 @@
 | `设置引擎选项 <引擎> <key> <value>` | 运行时调整任意引擎选项 | `设置引擎选项 pikafish movetime 12000` |
 | `查看引擎选项 <引擎>` | 查看引擎当前生效选项 | `查看引擎选项 elephantfish` |
 
+> 运行时设置会自动规范化别名。例如 `设置引擎选项 elephantfish maxdepth 10` 会保存为 `max_depth = 10`，`skilllevel` 会保存为 `skill_level`，`useopeningbook` 会保存为 `use_opening_book`。
+
 ---
 
 ## 配置项
