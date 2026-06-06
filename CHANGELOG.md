@@ -10,10 +10,12 @@
 - 修复 `random_seed` 为空字符串时随机引擎每次都固定同一步的问题
 - 修复 `elephantfish` 动态加载时 `tools.py` 导入 `elephantfish` 模块失败的问题
 - 修复 Pikafish 解压后未手动选择二进制时可能自动误选其他平台版本的问题
+- 修复运行时设置 `maxdepth`、`skilllevel`、`useopeningbook` 后，显示旧键名且实际读取不一致的问题
 
 ### 优化
 - HTTP `/analyze` 在当前引擎异常时会回退返回一个随机合法走法，避免 chess_arena 收到 HTTP 500 后中断走棋
 - `elephantfish` 加载时改用规范模块名，并注入运行时模块对象，降低动态导入冲突概率
+- 运行时引擎选项会自动规范化常见别名，例如 `maxdepth` 会保存为 `max_depth`
 - README 和 metadata 同步补充 chess_arena 对接、故障回退和更新后需重启的说明
 
 ## [1.46] - 2026-06-01
