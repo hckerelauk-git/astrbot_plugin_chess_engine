@@ -681,7 +681,21 @@ class ChessEnginePlugin(Star):
             return web.json_response({"error": "engine timeout"}, status=504)
         except Exception as exc:
             logger.warning("[ChessEngine] 分析失败: %s", exc)
-            return web.json_response({"error": str(exc)}, status=500)
+            fallback_move = random.choice(legal_moves)
+            elapsed_ms = int((time.perf_counter() - started_at) * 1000)
+            logger.warning("[ChessEngine] 回退随机走法: %s", fallback_move)
+            return web.json_response({
+                "protocol": self.PROTOCOL_NAME,
+                "request_id": request_id,
+                "engine": "random-fallback",
+                "engine_version": "1.0.0",
+                "best_move": fallback_move,
+                "move": fallback_move,
+                "depth": depth,
+                "score": None,
+                "elapsed_ms": elapsed_ms,
+                "warning": str(exc),
+            })
 
     async def _handle_health(self, request: web.Request) -> web.Response:
         return web.json_response({"status": "ok"})
