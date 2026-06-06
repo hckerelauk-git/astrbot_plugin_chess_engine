@@ -53,6 +53,7 @@ class ElephantfishEngine(ChessEngine):
 
     def _load_module(self) -> None:
         if self._module is not None:
+            sys.modules["elephantfish"] = self._module
             return
         path = self._module_path()
         if not path.exists():
@@ -65,6 +66,9 @@ class ElephantfishEngine(ChessEngine):
         module = importlib.util.module_from_spec(spec)
         sys.modules[spec.name] = module
         sys.modules["elephantfish"] = module
+        module_dir = str(path.parent)
+        if module_dir not in sys.path:
+            sys.path.insert(0, module_dir)
         spec.loader.exec_module(module)
         self._module = module
 
@@ -134,6 +138,9 @@ class ElephantfishEngine(ChessEngine):
         sys.modules[spec.name] = tools
         if self._module is not None:
             sys.modules["elephantfish"] = self._module
+        module_dir = str(tools_path.parent)
+        if module_dir not in sys.path:
+            sys.path.insert(0, module_dir)
         spec.loader.exec_module(tools)
 
         think_seconds = self._think_time_seconds()
