@@ -13,6 +13,24 @@ from engines.base import ChessEngine, EngineResult
 from engines.download import download_pikafish, get_pikafish_dir
 
 
+_FEN_BOARD_TRANSLATION = str.maketrans({
+    "H": "N",  # horse -> knight
+    "h": "n",
+    "E": "B",  # elephant -> bishop
+    "e": "b",
+    "G": "A",  # guard -> advisor
+    "g": "a",
+})
+
+_FEN_SIDE_ALIASES = {
+    "r": "w",
+    "red": "w",
+    "w": "w",
+    "b": "b",
+    "black": "b",
+}
+
+
 class PikafishEngine(ChessEngine):
     """Pikafish 引擎 - 最强开源象棋引擎，基于 Stockfish"""
 
@@ -86,11 +104,11 @@ class PikafishEngine(ChessEngine):
 
     def _normalize_fen(self, fen: str) -> str:
         parts = str(fen or "").strip().split()
+        if not parts:
+            return fen
+        parts[0] = parts[0].translate(_FEN_BOARD_TRANSLATION)
         if len(parts) >= 2:
-            if parts[1] == "r":
-                parts[1] = "w"
-            elif parts[1] == "b":
-                parts[1] = "b"
+            parts[1] = _FEN_SIDE_ALIASES.get(parts[1].lower(), parts[1])
         return " ".join(parts)
 
     def get_name(self) -> str:
