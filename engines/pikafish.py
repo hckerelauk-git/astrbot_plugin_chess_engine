@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import platform
 import shutil
 from pathlib import Path
 
@@ -9,7 +10,7 @@ except Exception:  # noqa: BLE001 - 在包加载阶段 astrbot.api 可能尚未�
     logger = logging.getLogger("astrbot_plugin_chess_engine.pikafish")
 
 from engines.base import ChessEngine, EngineResult
-from engines.download import find_pikafish_binary, download_pikafish, get_pikafish_dir
+from engines.download import download_pikafish, get_pikafish_dir
 
 
 class PikafishEngine(ChessEngine):
@@ -24,6 +25,12 @@ class PikafishEngine(ChessEngine):
 
     def set_uci_options(self, options: dict):
         self._uci_options = options
+
+    def set_options(self, options: dict) -> None:
+        self.set_uci_options(options or {})
+
+    def get_options(self) -> dict:
+        return dict(self._uci_options)
 
     def list_binaries(self) -> list[Path]:
         bin_dir = get_pikafish_dir()
@@ -51,7 +58,11 @@ class PikafishEngine(ChessEngine):
             p = Path(self._custom_path)
             if p.exists() and p.is_file():
                 return p
-        return find_pikafish_binary()
+        ext = ".exe" if platform.system().lower() == "windows" else ""
+        direct = get_pikafish_dir() / f"pikafish{ext}"
+        if direct.exists() and direct.is_file():
+            return direct
+        return None
 
     def _build_setoption_lines(self) -> list[str]:
         lines = []
@@ -120,6 +131,13 @@ class PikafishEngine(ChessEngine):
 
         binary = self._get_binary_path()
         if not binary:
+            candidates = self.list_binaries()
+            if candidates:
+                lines = ["Pikafish 已解压，但还没选具体二进制。"]
+                for i, item in enumerate(candidates, 1):
+                    lines.append(f"{i}. {item.relative_to(get_pikafish_dir())}")
+                lines.append("用 选择象棋引擎版本 <编号> 选当前系统对应的")
+                raise RuntimeError("\n".join(lines))
             raise RuntimeError("Pikafish 未安装，请先运行: 安装象棋引擎 pikafish")
 
         fen = self._normalize_fen(fen)
