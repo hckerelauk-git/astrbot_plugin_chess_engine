@@ -12,6 +12,7 @@
 - 修复 `xqwlight` 只读取 `best_move`，不兼容部分接口返回 `move` 字段的问题
 - 修复 `elephantfish` 的布尔选项使用字符串 `false` 时仍会被当成 True 的问题
 - 保留 `elephantfish` 的 H/h 到 N/n FEN 兼容转换，避免 chess_arena 的马棋子表示导致解析失败
+- 修复 chess_arena FEN 使用 `E/e` 表示象时，elephantfish 只能识别 `B/b` 导致解析失败的问题
 
 ### 文档
 - README、metadata 与更新日志同步记录 1.48 重构内容
