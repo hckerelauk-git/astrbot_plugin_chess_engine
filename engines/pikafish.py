@@ -37,6 +37,14 @@ class PikafishEngine(ChessEngine):
     def __init__(self, custom_path: str = "", uci_options: dict | None = None):
         self._custom_path = custom_path
         self._uci_options = uci_options or {}
+        self._proc: asyncio.subprocess.Process | None = None
+        self._proc_options_hash: int = 0
+        self._proc_binary: Path | None = None
+        self._lock = asyncio.Lock()
+
+    @property
+    def _options_hash(self) -> int:
+        return hash(frozenset(self._uci_options.items()))
 
     def set_custom_path(self, path: str):
         self._custom_path = path
@@ -160,17 +168,64 @@ class PikafishEngine(ChessEngine):
 
         fen = self._normalize_fen(fen)
 
+        async with self._lock:
+            try:
+                return await self._run_engine(binary, fen, legal_moves, depth, timeout_ms)
+            except asyncio.TimeoutError:
+                raise RuntimeError("Pikafish 分析超时")
+            except Exception as e:
+                raise RuntimeError(f"Pikafish 分析失败: {e}")
+
+    async def shutdown(self) -> None:
+        async with self._lock:
+            proc = self._proc
+            self._proc = None
+            self._proc_options_hash = 0
+            self._proc_binary = None
+            if proc is not None:
+                await self._shutdown_proc(proc)
+
+    async def _start_process(self, binary: Path) -> asyncio.subprocess.Process:
+        proc = await asyncio.create_subprocess_exec(
+            str(binary),
+            stdin=asyncio.subprocess.PIPE,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        assert proc.stdin is not None
+        assert proc.stdout is not None
         try:
-            return await self._run_engine(binary, fen, legal_moves, depth, timeout_ms)
-        except asyncio.TimeoutError:
-            raise RuntimeError("Pikafish 分析超时")
-        except Exception as e:
-            raise RuntimeError(f"Pikafish 分析失败: {e}")
+            await self._write_line(proc, "uci")
+            await self._wait_for_token(proc, "uciok", timeout=10)
+            for line in self._build_setoption_lines():
+                await self._write_line(proc, line)
+            await self._write_line(proc, "isready")
+            await self._wait_for_token(proc, "readyok", timeout=10)
+        except Exception:
+            try:
+                proc.kill()
+                await proc.communicate()
+            except Exception:
+                pass
+            raise
+        self._proc = proc
+        self._proc_options_hash = self._options_hash
+        self._proc_binary = binary
+        return proc
+
+    async def _ensure_process(self, binary: Path) -> asyncio.subprocess.Process:
+        if self._proc is not None and self._proc.returncode is None:
+            if self._proc_binary == binary and self._options_hash == self._proc_options_hash:
+                return self._proc
+            await self._shutdown_proc(self._proc)
+            self._proc = None
+            self._proc_binary = None
+        return await self._start_process(binary)
 
     async def _run_engine(
         self, binary: Path, fen: str, legal_moves: list[str], depth: int, timeout_ms: int | None = None
     ) -> EngineResult:
-        setoption_lines = self._build_setoption_lines()
+        proc = await self._ensure_process(binary)
         configured_movetime = int(self._uci_options.get("movetime", 0))
         configured_overhead = int(self._uci_options.get("move_overhead", 30))
         effective_timeout_ms = max(1000, int(timeout_ms)) if timeout_ms is not None else None
@@ -190,23 +245,11 @@ class PikafishEngine(ChessEngine):
             go_cmd = f"go depth {depth}"
             proc_timeout = 120.0
 
-        proc = await asyncio.create_subprocess_exec(
-            str(binary),
-            stdin=asyncio.subprocess.PIPE,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
         best_move = ""
 
         try:
             assert proc.stdin is not None
             assert proc.stdout is not None
-            await self._write_line(proc, "uci")
-            await self._wait_for_token(proc, "uciok", timeout=10)
-            for line in setoption_lines:
-                await self._write_line(proc, line)
-            await self._write_line(proc, "isready")
-            await self._wait_for_token(proc, "readyok", timeout=10)
             await self._write_line(proc, "ucinewgame")
             await self._write_line(proc, "isready")
             await self._wait_for_token(proc, "readyok", timeout=10)
@@ -214,15 +257,23 @@ class PikafishEngine(ChessEngine):
             await self._write_line(proc, go_cmd)
             best_move = await self._wait_for_bestmove(proc, legal_moves, timeout=proc_timeout)
         except asyncio.TimeoutError:
-            proc.kill()
-            await proc.communicate()
+            await self._shutdown_proc(proc)
+            self._proc = None
+            self._proc_options_hash = 0
+            self._proc_binary = None
             raise
         except asyncio.CancelledError:
-            proc.kill()
-            await proc.communicate()
-            raise
-        finally:
             await self._shutdown_proc(proc)
+            self._proc = None
+            self._proc_options_hash = 0
+            self._proc_binary = None
+            raise
+        except Exception:
+            await self._shutdown_proc(proc)
+            self._proc = None
+            self._proc_options_hash = 0
+            self._proc_binary = None
+            raise
 
         return EngineResult(best_move=best_move, depth=depth)
 

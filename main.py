@@ -133,9 +133,9 @@ class ChessEnginePlugin(Star):
     def _build_engine_options(self) -> dict[str, dict]:
         engine_options = {
             "pikafish": {
-                "threads": _as_int(self.config.get("pikafish_threads"), 2, 1, 1024),
+                "threads": _as_int(self.config.get("pikafish_threads"), 4, 1, 1024),
                 "hash": _as_int(self.config.get("pikafish_hash"), 256, 1, 33554432),
-                "movetime": _as_int(self.config.get("pikafish_movetime"), 8000, 0, 60000),
+                "movetime": _as_int(self.config.get("pikafish_movetime"), 0, 0, 60000),
                 "multipv": _as_int(self.config.get("pikafish_multipv"), 1, 1, 500),
                 "ponder": _as_bool(self.config.get("pikafish_ponder"), False),
                 "move_overhead": _as_int(self.config.get("pikafish_move_overhead"), 30, 0, 5000),
@@ -489,4 +489,5 @@ class ChessEnginePlugin(Star):
             await self._runner.cleanup()
         if self._startup_task and not self._startup_task.done():
             self._startup_task.cancel()
+        await self._manager.shutdown_all()
         logger.info("[ChessEngine] 插件已卸载")

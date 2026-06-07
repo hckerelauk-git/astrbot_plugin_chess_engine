@@ -36,9 +36,9 @@ help: |
   - `random_*`：seed
 
   ### Pikafish UCI 选项（仅对 Pikafish 有效）
-  - `pikafish_threads`：线程数（默认 2，推荐等于 CPU 核心数）
+  - `pikafish_threads`：线程数（默认 4，推荐等于 CPU 核心数）
   - `pikafish_hash`：哈希内存 MB（默认 256，推荐 128-512）
-  - `pikafish_movetime`：每步思考时间 ms（默认 8000，chess_arena 会透传 timeout_ms）
+  - `pikafish_movetime`：每步思考时间 ms（默认 0=深度模式，设 >0 则覆盖 depth 改用 fixed time）
   - `pikafish_multipv`：多 PV 数（默认 1，最大 500）
   - `pikafish_ponder`：后台思考（默认 false）
   - `pikafish_move_overhead`：通信延迟补偿 ms（默认 30）

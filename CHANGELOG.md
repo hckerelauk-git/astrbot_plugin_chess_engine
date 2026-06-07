@@ -17,6 +17,11 @@
 - 补全 chess_arena 到 Pikafish 的同一套 FEN 别名映射，避免本地 UCI 引擎收到非标准棋子字母
 - 修复 elephantfish 返回红黑视角旋转坐标时，未转换回 chess_arena 合法走法坐标导致回退随机的问题
 
+### 优化
+- Pikafish 默认 `movetime` 改为 0，默认走 depth 模式，避免误以为 depth 生效但实际被固定思考时间覆盖
+- Pikafish 默认线程数从 2 提高到 4，提升本地搜索性能
+- Pikafish 子进程改为复用缓存，避免每步重复启动进程和 UCI 握手；切换二进制或选项变化时会自动重启
+
 ### 文档
 - README、metadata 与更新日志同步记录 1.48 重构内容
 

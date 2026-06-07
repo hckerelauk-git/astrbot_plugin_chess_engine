@@ -43,3 +43,7 @@ class ChessEngine(ABC):
     async def analyze(self, fen: str, legal_moves: list[str], depth: int = 4, timeout_ms: int | None = None) -> EngineResult:
         """分析局面，从 legal_moves 中选择最佳走法"""
         pass
+
+    async def shutdown(self) -> None:
+        """释放资源，关闭子进程。默认空实现，子类按需覆盖。"""
+        pass

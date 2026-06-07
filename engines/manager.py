@@ -119,3 +119,10 @@ class EngineManager:
             "current": True,
             "options": self._engine_options.get(engine.get_name(), {}),
         }
+
+    async def shutdown_all(self) -> None:
+        for engine in self._engines.values():
+            try:
+                await engine.shutdown()
+            except Exception:
+                pass

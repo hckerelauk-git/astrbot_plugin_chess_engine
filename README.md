@@ -112,9 +112,9 @@ Pikafish 可执行文件路径。
 
 | 配置项 | 类型 | 默认值 | 范围 | 说明 |
 |--------|------|--------|------|------|
-| `pikafish_threads` | int | 2 | 1-1024 | 线程数，推荐等于 CPU 核心数 |
+| `pikafish_threads` | int | 4 | 1-1024 | 线程数，推荐等于 CPU 核心数 |
 | `pikafish_hash` | int | 256 | 1-33554432 | 哈希内存 (MB)，推荐 128-512 |
-| `pikafish_movetime` | int | 8000 | 0-60000 | 每步思考时间 (ms)，设 0 则用 `engine_depth` 控制 |
+| `pikafish_movetime` | int | 0 | 0-60000 | 每步思考时间 (ms)，默认 0 使用 `engine_depth` 控制 |
 | `pikafish_multipv` | int | 1 | 1-500 | 多 PV 数，设 1 性能最佳 |
 | `pikafish_ponder` | bool | false | - | 后台思考 |
 | `pikafish_move_overhead` | int | 30 | 0-5000 | 补偿通信延迟 (ms) |
